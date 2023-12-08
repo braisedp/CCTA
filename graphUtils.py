@@ -18,9 +18,9 @@ def influence(G, S, Ep):
 
 
 def read_graph(filename, directed=False):
-    '''
+    """
     Read a graph from a file that may have multiple edges between the same nodes.
-    '''
+    """
     if not directed:
         G = nx.Graph()
     else:
@@ -80,8 +80,9 @@ def read_adjacency_list(filename, directed=False):
 
 
 def gen_prb(n, mu, sigma, lower=0, upper=1):
-    '''Generate probability from normal distribution in the range [0,1].
-    '''
+    """
+    Generate probability from normal distribution in the range [0,1].
+    """
     import scipy.stats as stats
     X = stats.truncnorm(
         (lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
