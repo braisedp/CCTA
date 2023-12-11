@@ -1,3 +1,4 @@
+import random
 from abc import ABCMeta, abstractmethod
 from typing import List
 
@@ -8,15 +9,15 @@ class Hospital(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def select(self, students: List) -> List:
+        pass
+
+    @abstractmethod
     def capable(self, students: List) -> List:
         pass
 
     @abstractmethod
-    def get_students(self) -> List:
-        pass
-
-    @abstractmethod
-    def set_students(self, students: List):
+    def students(self) -> List:
         pass
 
     @abstractmethod
@@ -25,12 +26,21 @@ class Hospital(metaclass=ABCMeta):
 
 
 class Student(metaclass=ABCMeta):
+
     @abstractmethod
-    def choice(self, hospitals: List) -> List:
+    def init_preference_list(self, hospitals: List):
         pass
 
     @abstractmethod
-    def capable(self, hospitals: List) -> List:
+    def preference_list(self):
+        pass
+
+    @abstractmethod
+    def propose(self) -> Hospital:
+        pass
+
+    @abstractmethod
+    def rejected_by(self, hospital: Hospital):
         pass
 
     @abstractmethod
@@ -38,35 +48,42 @@ class Student(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_hospital(self) -> List:
-        pass
-
-    @abstractmethod
-    def set_hospital(self, students: List):
-        pass
-
-    @abstractmethod
     def matched(self) -> bool:
         pass
 
-def matched(students:List) -> bool:
+    @abstractmethod
+    def prefer(self, hospital1, hospital2) -> bool:
+        pass
+
+
+def all_matched(students: List) -> bool:
     flag = True
     for s in students:
         if not s.matched:
             flag = False
     return flag
 
-def choose(students:List) -> Student:
-    l = filter(lambda s:not s.matched, students)
+
+def choose(students: List) -> Student:
+    l = filter(lambda s: not s.matched, students)
+    return random.choice(l)
+
 
 def generalized_da(hospitals: List, students: List):
-    dict_h = {}
-    for h in hospitals:
-        dict_h.update({h, h.capable(students)})
+    for student in students:
+        student.init_preference_list(hospitals)
+    while not all_matched(students):
+        student = choose(students)
+        h = student.propose()
+        h.choice(h.students() + [student])
+    return hospitals, students
 
-    dict_s = {}
-    for s in students:
-        dict_s.update({s, s.capable(hospitals)})
 
-    while not matched(students):
-
+def heuristic(hospitals: List, students: List, k: int):
+    for i in range(k):
+        for hospital in hospitals:
+            s_h = hospital.students().copy()
+            for student in students:
+                if hospital in student.preference_list() and student.prefer(hospital, student.hospital()):
+                    s_h.append(student)
+            hospital.select(s_h)
