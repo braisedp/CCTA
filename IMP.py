@@ -1,0 +1,251 @@
+import random
+import multiprocessing as mp
+import time
+import math
+import networkx as nx
+
+
+class Worker(mp.Process):
+    def __init__(self, graph, inQ, outQ):
+        super(Worker, self).__init__(target=self.start)
+        self.graph = graph
+        self.inQ = inQ
+        self.outQ = outQ
+        self.R = []
+        self.count = 0
+
+    def run(self):
+
+        while True:
+            theta = self.inQ.get()
+            # print(theta)
+            while self.count < theta:
+                v = random.randint(1, len(self.graph.nodes))
+                rr = generate_rr(self.graph, v)
+                self.R.append(rr)
+                self.count += 1
+            self.count = 0
+            self.outQ.put(self.R)
+            self.R = []
+
+
+def create_worker(graph, num):
+    worker = []
+    for i in range(num):
+        # print(i)
+        worker.append(Worker(graph, mp.Queue(), mp.Queue()))
+        worker[i].start()
+    return worker
+
+
+def finish_worker(worker):
+    for w in worker:
+        w.terminate()
+
+
+def sampling(graph, k, episode, l):
+    R = []
+    LB = 1
+    n = len(graph.nodes)
+    episode_p = episode * math.sqrt(2)
+    worker_num = 2
+    worker = create_worker(graph, worker_num)
+    for i in range(1, int(math.log2(n - 1)) + 1):
+        s = time.time()
+        x = n / (math.pow(2, i))
+        lambda_p = ((2 + 2 * episode_p / 3) * (logcnk(n, k) + l * math.log(n) + math.log(math.log2(n))) * n) / pow(
+            episode_p, 2)
+        theta = lambda_p / x
+        for ii in range(worker_num):
+            worker[ii].inQ.put((theta - len(R)) / worker_num)
+        for w in worker:
+            R_list = w.outQ.get()
+            R += R_list
+        print('time to find rr', time.time() - s)
+        start = time.time()
+        Si, f = node_selection(graph, R, k)
+        print(f)
+        print('node selection time', time.time() - start)
+        if n * f >= (1 + episode_p) * x:
+            LB = n * f / (1 + episode_p)
+            break
+    alpha = math.sqrt(l * math.log(n) + math.log(2))
+    beta = math.sqrt((1 - 1 / math.e) * (logcnk(n, k) + l * math.log(n) + math.log(2)))
+    lambda_aster = 2 * n * pow(((1 - 1 / math.e) * alpha + beta), 2) * pow(episode, -2)
+    theta = lambda_aster / LB
+    length_r = len(R)
+    diff = theta - length_r
+    _start = time.time()
+    if diff > 0:
+        for ii in range(worker_num):
+            worker[ii].inQ.put(diff / worker_num)
+        for w in worker:
+            R_list = w.outQ.get()
+            R += R_list
+    '''
+    
+    while length_r <= theta:
+        v = random.randint(1, n)
+        rr = generate_rr(v)
+        R.append(rr)
+        length_r += 1
+    '''
+    _end = time.time()
+    print(_end - _start)
+    finish_worker(worker)
+    return R
+
+
+def generate_rr(graph, v):
+    return generate_rr_ic(graph, v)
+
+
+def node_selection(graph, R, k):
+    Sk = set()
+    rr_degree = [0]*(len(graph.nodes) + 1)
+    node_rr_set = dict()
+    matched_count = 0
+    for j in range(0, len(R)):
+        rr = R[j]
+        for rr_node in rr:
+            rr_degree[rr_node] += 1
+            if rr_node not in node_rr_set:
+                node_rr_set[rr_node] = list()
+            node_rr_set[rr_node].append(j)
+    for i in range(k):
+        max_point = rr_degree.index(max(rr_degree))
+        Sk.add(max_point)
+        matched_count += len(node_rr_set[max_point])
+        index_set = []
+        for node_rr in node_rr_set[max_point]:
+            index_set.append(node_rr)
+        for jj in index_set:
+            rr = R[jj]
+            for rr_node in rr:
+                rr_degree[rr_node] -= 1
+                node_rr_set[rr_node].remove(jj)
+    return Sk, matched_count / len(R)
+
+
+def generate_rr_ic(graph, node):
+    activity_set = list()
+    activity_set.append(node)
+    activity_nodes = list()
+    activity_nodes.append(node)
+    while activity_set:
+        new_activity_set = list()
+        for seed in activity_set:
+            for node in graph.neighbors(seed):
+                weight = graph[seed][node]['weight']
+                if node not in activity_nodes:
+                    if random.random() < weight:
+                        activity_nodes.append(node)
+                        new_activity_set.append(node)
+        activity_set = new_activity_set
+    return activity_nodes
+
+
+def imm(graph, k, episode, l):
+    n = len(graph.nodes)
+    l = l * (1 + math.log(2) / math.log(n))
+    R = sampling(graph, k, episode, l)
+    Sk, z = node_selection(graph, R, k)
+    return Sk
+
+
+def logcnk(n, k):
+    res = 0
+    for i in range(n - k + 1, n + 1):
+        res += math.log(i)
+    for i in range(1, k + 1):
+        res -= math.log(i)
+    return res
+
+
+def read_graph(filename, directed=False):
+    if not directed:
+        G = nx.Graph()
+    else:
+        G = nx.DiGraph()
+    with open(filename) as f:
+        for line in f:
+            e0, e1 = map(int, line.split())
+            try:
+                G[e0][e1]["weight"] += 1
+            except KeyError:
+                G.add_edge(e0, e1, weight=1)
+    return G
+
+
+def read_graph_with_weights(filename, directed=False):
+    if not directed:
+        G = nx.Graph()
+    else:
+        G = nx.DiGraph()
+    with open(filename) as f:
+        for line in f:
+            e0, e1, w = map(int, line.split())
+            G.add_edge(e0, e1, weight=w)
+    return G
+
+
+def read_graph_without_weights(filename, directed=False):
+    if not directed:
+        G = nx.Graph()
+    else:
+        G = nx.DiGraph()
+    with open(filename) as f:
+        for line in f:
+            e0, e1 = map(int, line.split())
+            G.add_edge(e0, e1)
+    return G
+
+
+def convert_undirected_to_directed(G):
+    assert G.isinstance(type(nx.Graph()))
+    # check if there are weights on edges
+    e1, e2 = G.edges()[0]
+    if "weight" in G[e1][e2]:
+        weighted = True
+    else:
+        weighted = False
+    directed_G = nx.DiGraph()
+    if weighted:
+        for e in G.edges():
+            directed_G.add_weighted_edges_from(
+                [(e[0], e[1], G[e[0]][e[1]]["weight"]), (e[1], e[0], G[e[1]][e[0]]["weight"])])
+    else:
+        for e in G.edges():
+            directed_G.add_edges_from([(e[0], e[1]), (e[1], e[0])])
+    return directed_G
+
+
+def read_adjacency_list(filename, directed=False):
+    if not directed:
+        G = nx.Graph()
+    else:
+        G = nx.DiGraph()
+    with open(filename) as f:
+        for node, line in enumerate(f):
+            neighbors = map(int, line.split())
+            G.add_node(node)
+            G.add_edges_from([(node, v) for v in neighbors])
+    return G
+
+
+def gen_prb(n, mu, sigma, lower=0, upper=1):
+    import scipy.stats as stats
+    X = stats.truncnorm(
+        (lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
+    return X.rvs(n)
+
+
+def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, directed=True):
+    G = read_graph(i_flnm)
+    m = len(G.edges())
+    X = gen_prb(m, mu, sigma)
+    with open(o_flnm, "w+") as f:
+        for i, e in enumerate(G.edges()):
+            f.write("%d %d %s\n" % (e[0], e[1], X[i]))
+            if directed:
+                f.write("%d %d %s\n" % (e[1], e[0], X[i]))
