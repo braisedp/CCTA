@@ -1,7 +1,5 @@
 import networkx as nx
 import random
-import time
-import os
 
 
 def influence(G, S, Ep):
@@ -31,7 +29,7 @@ def read_graph(filename, directed=False):
             try:
                 G[e0][e1]["weight"] += 1
             except KeyError:
-                G.add_edge(e0, e1, {"weight": 1})
+                G.add_edge(e0, e1, weight=1)
     return G
 
 
@@ -98,3 +96,31 @@ def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, directed=True):
             f.write("%d %d %s\n" % (e[0], e[1], X[i]))
             if directed:
                 f.write("%d %d %s\n" % (e[1], e[0], X[i]))
+
+
+def generate_rr_set(G, theta):
+    n = len(G.nodes)
+    R = []
+    for i in range(theta):
+        v = random.randint(1, n)
+        rr = generate_rr_ic(G, v)
+        R.append(rr)
+    return R
+
+
+def generate_rr_ic(G, node):
+    activity_set = list()
+    activity_set.append(node)
+    activity_nodes = list()
+    activity_nodes.append(node)
+    while activity_set:
+        new_activity_set = list()
+        for seed in activity_set:
+            for node in G[seed]:
+                if node not in activity_nodes:
+                    weight = G[seed][node][weight]
+                    if random.random() < weight:
+                        activity_nodes.append(node)
+                        new_activity_set.append(node)
+        activity_set = new_activity_set
+    return activity_nodes
