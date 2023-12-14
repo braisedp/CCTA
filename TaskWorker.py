@@ -1,6 +1,6 @@
 from typing import List
 
-from stableMatching import School, Student
+from stable_matching.stableMatching import School, Student
 
 
 def q(R, Q, workers):
