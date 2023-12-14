@@ -1,22 +1,20 @@
 import random
 from typing import List
 
-from stableMatching import School, Student, generalized_da
+from stableMatching import School, Student
 
 
 class Hospital(School):
 
     def __init__(self, i, capacity: int):
         self.i = i
-        self.preference = {}
         self.doctors = []
         self.capacity = capacity
 
     def choice(self, doctor):
         if len(self.doctors) >= self.capacity:
-            d = max(self.doctors, key=lambda x: self.preference[x])
-            idx = self.preference[doctor]
-            if idx < self.preference[d]:
+            d = max(self.doctors, key=lambda x: x.score)
+            if doctor.score > d.score:
                 self.doctors.remove(d)
                 self.doctors.append(doctor)
                 d.rejected_by(self)
@@ -27,25 +25,38 @@ class Hospital(School):
             self.doctors.append(doctor)
             doctor.chosen_by(self)
 
-    def select(self, doctors: List) -> List:
-        sorted(doctors, key=lambda x: self.preference[x])
+    def select(self, doctors: List):
+        sorted(doctors, key=lambda x: x.score)
         while len(doctors) > self.capacity:
-            doctors.pop()
-        return doctors
+            d = doctors.pop()
+            if d in self.doctors:
+                d.hospital = None
+        for d in doctors:
+            if d not in self.doctors:
+                if d.hospital is not None:
+                    d.hospital.doctors.remove(d)
+                d.hospital = self
+        self.doctors = doctors
 
     def preview(self, students: List):
-        n = len(students)
-        p = random.sample([i for i in range(n)], n)
-        for i in range(n):
-            self.preference[students[i]] = p[i]
+        pass
 
     def students(self) -> List:
         return self.doctors
 
+    def refresh(self):
+        self.doctors = []
+
 
 class Doctor(Student):
-    def __init__(self, i):
+    def __init__(self, i, score):
         self.i = i
+        self.preference = {}
+        self.p_list = []
+        self.hospital = None
+        self.score = score
+
+    def refresh(self):
         self.preference = {}
         self.p_list = []
         self.hospital = None
@@ -85,22 +96,3 @@ class Doctor(Student):
         if self.hospital is None:
             return True
         return self.preference[hospital] > self.preference[self.hospital]
-
-
-def test():
-    hospitals = [Hospital(i, 2) for i in range(3)]
-    doctors = [Doctor(i) for i in range(8)]
-    hospitals, doctors = generalized_da(hospitals, doctors)
-    for hospital in hospitals:
-        p = sorted(hospital.preference.keys(), key=lambda x: hospital.preference[x])
-        print('hospital:{},preference:{}'.format(hospital.i, [d.i for d in p]))
-    for doctor in doctors:
-        p = sorted(doctor.preference.keys(), key=lambda x: doctor.preference[x])
-        print('doctor:{},preference:{}'.format(doctor.i, [h.i for h in p]))
-
-    for hospital in hospitals:
-        print('hospital:{},doctors:{}'.format(hospital.i, [d.i for d in hospital.doctors]))
-
-
-if __name__ == "__main__":
-    test()
