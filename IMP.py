@@ -19,7 +19,7 @@ class Worker(mp.Process):
             theta = self.inQ.get()
             # print(theta)
             while self.count < theta:
-                v = random.randint(1, len(self.graph.nodes))
+                v = random.choice(list(self.graph.nodes))
                 rr = generate_rr(self.graph, v)
                 self.R.append(rr)
                 self.count += 1
@@ -42,35 +42,43 @@ def finish_worker(worker):
         w.terminate()
 
 
-def sampling(graph, k, episode, l):
+def sampling(graph, k, epsilon, l):
     R = []
     LB = 1
     n = len(graph.nodes)
-    episode_p = episode * math.sqrt(2)
-    worker_num = 2
+    epsilon_p = epsilon * math.sqrt(2)
+    worker_num = 8
     worker = create_worker(graph, worker_num)
     for i in range(1, int(math.log2(n - 1)) + 1):
         s = time.time()
         x = n / (math.pow(2, i))
-        lambda_p = ((2 + 2 * episode_p / 3) * (logcnk(n, k) + l * math.log(n) + math.log(math.log2(n))) * n) / pow(
-            episode_p, 2)
+        lambda_p = ((2 + 2 * epsilon_p / 3) * (logcnk(n, k) + l * math.log(n) + math.log(math.log2(n))) * n) / pow(
+            epsilon_p, 2)
         theta = lambda_p / x
         for ii in range(worker_num):
             worker[ii].inQ.put((theta - len(R)) / worker_num)
         for w in worker:
             R_list = w.outQ.get()
             R += R_list
+        # count = 0
+        # print('theta={}'.format(theta))
+        # while count < theta:
+        #     v = random.randint(0, len(graph.nodes) - 1)
+        #     rr = generate_rr(graph, v)
+        #     print('count:{}'.format(count))
+        #     R.append(rr)
+        #     count += 1
         print('time to find rr', time.time() - s)
         start = time.time()
         Si, f = node_selection(graph, R, k)
         print(f)
         print('node selection time', time.time() - start)
-        if n * f >= (1 + episode_p) * x:
-            LB = n * f / (1 + episode_p)
+        if n * f >= (1 + epsilon_p) * x:
+            LB = n * f / (1 + epsilon_p)
             break
     alpha = math.sqrt(l * math.log(n) + math.log(2))
     beta = math.sqrt((1 - 1 / math.e) * (logcnk(n, k) + l * math.log(n) + math.log(2)))
-    lambda_aster = 2 * n * pow(((1 - 1 / math.e) * alpha + beta), 2) * pow(episode, -2)
+    lambda_aster = 2 * n * pow(((1 - 1 / math.e) * alpha + beta), 2) * pow(epsilon, -2)
     theta = lambda_aster / LB
     length_r = len(R)
     diff = theta - length_r
