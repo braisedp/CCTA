@@ -8,7 +8,7 @@ def read_graph(filename, directed=False):
         G = nx.DiGraph()
     with open(filename) as f:
         for line in f:
-            e0, e1 = map(int, line.split())
+            e0, e1= map(int, line.split())
             try:
                 G[e0][e1]["weight"] += 1
             except KeyError:
@@ -23,7 +23,10 @@ def read_graph_with_weights(filename, directed=False):
         G = nx.DiGraph()
     with open(filename) as f:
         for line in f:
-            e0, e1, w = map(int, line.split())
+            l = line.split()
+            e0 = int(l[0])
+            e1 = int(l[1])
+            w = float(l[2])
             G.add_edge(e0, e1, weight=w)
     return G
 
