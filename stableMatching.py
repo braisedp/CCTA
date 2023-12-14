@@ -9,7 +9,7 @@ class School(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def select(self, students: List) -> List:
+    def select(self, students: List):
         pass
 
     @abstractmethod
@@ -78,10 +78,13 @@ def generalized_da(schools: List, students: List):
         student = choose(students)
         school = student.propose()
         school.choice(student)
-    return schools, students
 
 
 def heuristic(schools: List, students: List, k: int):
+    for student in students:
+        student.preview(schools)
+    for school in schools:
+        school.preview(students)
     for i in range(k):
         for school in schools:
             l = school.students().copy()
