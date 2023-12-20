@@ -32,19 +32,19 @@ class Student(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def propose(self) -> School:
+    def propose(self):
         pass
 
     @abstractmethod
-    def rejected_by(self, school: School):
+    def rejected_by(self, school):
         pass
 
     @abstractmethod
-    def chosen_by(self, school: School):
+    def chosen_by(self, school):
         pass
 
     @abstractmethod
-    def school(self) -> School:
+    def school(self):
         pass
 
     @abstractmethod
