@@ -2,6 +2,7 @@ import random
 import multiprocessing as mp
 import time
 import math
+from graph.graph import generate_rr
 
 
 class Worker(mp.Process):
@@ -103,13 +104,9 @@ def sampling(graph, k, epsilon, l):
     return R
 
 
-def generate_rr(graph, v):
-    return generate_rr_ic(graph, v)
-
-
 def node_selection(graph, R, k):
     Sk = set()
-    rr_degree = [0]*(len(graph.nodes) + 1)
+    rr_degree = [0] * (len(graph.nodes) + 1)
     node_rr_set = dict()
     matched_count = 0
     for j in range(0, len(R)):
@@ -134,24 +131,6 @@ def node_selection(graph, R, k):
     return Sk, matched_count / len(R)
 
 
-def generate_rr_ic(graph, node):
-    activity_set = list()
-    activity_set.append(node)
-    activity_nodes = list()
-    activity_nodes.append(node)
-    while activity_set:
-        new_activity_set = list()
-        for seed in activity_set:
-            for node in graph.neighbors(seed):
-                weight = graph[seed][node]['weight']
-                if node not in activity_nodes:
-                    if random.random() < weight:
-                        activity_nodes.append(node)
-                        new_activity_set.append(node)
-        activity_set = new_activity_set
-    return activity_nodes
-
-
 def imm(graph, k, episode, l):
     n = len(graph.nodes)
     l = l * (1 + math.log(2) / math.log(n))
@@ -167,6 +146,3 @@ def logcnk(n, k):
     for i in range(1, k + 1):
         res -= math.log(i)
     return res
-
-
-
