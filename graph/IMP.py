@@ -2,7 +2,7 @@ import random
 import multiprocessing as mp
 import time
 import math
-from graph.graph import generate_rr
+from graph import generate_rr
 
 
 class Worker(mp.Process):

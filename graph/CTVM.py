@@ -1,7 +1,7 @@
 import random
 import multiprocessing as mp
 import math
-from graph.graph import generate_rr
+from graph import generate_rr
 from utils import Gamma
 
 
