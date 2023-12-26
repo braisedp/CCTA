@@ -55,12 +55,13 @@ def finish_worker(worker):
 def sampling(graph, C, k, delta, epsilon, values):
     R_1 = []
     R_2 = []
-    n = len(graph.nodes)
+    n = len(C)
     Q = sum(values)
     worker_num = 2
     workers = create_worker(graph, worker_num, values)
     i_max = math.ceil(math.log2(Q / (sum(top_k(C, values, k)) * math.pow(epsilon, 2))))
-    theta = 1 / 2 * math.sqrt(math.log(6 / delta) + math.sqrt(1 / 4 * logcnk(n, k) + math.log(6 / delta)))
+    theta = 2 * math.pow(1 / 4 * math.sqrt(math.log(6 / delta)) + math.sqrt(1 / 4 * logcnk(n, k) + math.log(6 / delta)),
+                         2)
     for i in range(1, i_max):
         delta1 = delta2 = delta / (3 * i_max)
         for ii in range(worker_num):
@@ -71,9 +72,9 @@ def sampling(graph, C, k, delta, epsilon, values):
             R_2 += R2_list
         Si, f = node_selection(C, R_1, k)
         sigma_l = (math.pow(math.sqrt(Gamma(R_2, Si) + 2 * math.log(1 / delta2) / 9)
-                            - math.sqrt(math.log(1 / delta2) / 2), 2) - math.log(1 / delta2) / 18) * Q / theta
+                            - math.sqrt(math.log(1 / delta2) / 2), 2) - math.log(1 / delta2) / 18)
         sigma_u = math.pow(math.sqrt(4 * Gamma(R_1, Si) + math.log(1 / delta1) / 2)
-                           + math.sqrt(math.log(1 / delta1) / 2), 2) * Q / theta
+                           + math.sqrt(math.log(1 / delta1) / 2), 2)
         if sigma_l / sigma_u >= 0.25:
             break
         theta *= 2
