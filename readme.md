@@ -19,7 +19,7 @@ The generation of R follows the steps below:
 2. generate hyperedge of all RR nodes for $v$
 3. repeat step 1 and 2 until the size of RR set meets $\theta^j$
 
-Define $\hat{f}(S;R^j)= \frac{Q_j}{\theta^j} \sum_{i=1}^{\theta^j}\mathbb{I}(S\cap R^j)$ the estimation of influence, $f(S)$ the true influence.
+Define $\hat{f}(S;R^j)= \frac{Q_j}{\theta^j} \sum\limits_{i=1}^{\theta^j}\mathbb{I}(S\cap R^j)$ the estimation of influence, $f(S)$ the true influence.
 
 Denote $\theta^j$ the size of generated  $R^j$, define
 
@@ -37,14 +37,17 @@ The sampling algorithm follows the steps below:
    else double the size of R1, R2 and $i\gets i+1$, go to step 2
 4. return R1
 
-Using R1 and R2, we calculate $f^l(S^*), f^u(S^o)$ ：
+Using R1 and R2, we calculate：
 
 $$
 f^l(S^*) = \frac{Q_j}{\theta}\left[\left(\sqrt{\frac{\theta}{Q_j}\hat{f}(S^*;R_2)+\frac{2\log(1/\delta_2)}{9}}-\sqrt{\frac{\log(1/\delta_2)}{2}}\right)^2-\frac{\log(1/\delta_2)}{18}\right]
 $$
 
+
+and
+
 $$
 f^u(S^o)= \frac{Q_j}{\theta}\left(\sqrt{\frac{\theta}{Q_j}\hat{f}(S^o;R_1)+\frac{\log(1/\delta_1)}{2}}+\sqrt{\frac{log(1/\delta_1)}{2}}\right)^2
 $$
 
-By $\hat{f}(S^o;R_1)\leq 4 \hat{f}(S^*;R_1)$
+We have $\hat{f}(S^o;R_1)\leq 4 \hat{f}(S^*;R_1)$ or $\hat{f}(S^o:R_1)\leq min_{i\leq k}\{\hat{f}(S^*_i;R_1)+maxMC_k\hat{f}(v|S^*_i;R_1)\}$

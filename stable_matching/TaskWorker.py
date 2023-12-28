@@ -96,11 +96,6 @@ class Task(School):
         self.R = R
         self.Q = Q
 
-    def refresh(self):
-        self.S = []
-        self.choice_func.refresh(self.S)
-        self.select_func.refresh(self.S)
-
     def set_costs(self, costs, D):
         self.costs = costs
         self.choice_func = MChoice(self.S, self.R, self.budget, D, costs)
@@ -132,6 +127,11 @@ class Task(School):
 
     def dispose(self, worker):
         self.S.remove(worker)
+
+    def refresh(self):
+        self.S = []
+        self.choice_func.refresh(self.S)
+        self.select_func.refresh(self.S)
 
 
 class Worker(Student):
