@@ -3,6 +3,7 @@ import multiprocessing as mp
 import time
 import math
 from graph import generate_rr
+from utils.funcs import logcnk
 
 
 class Worker(mp.Process):
@@ -137,12 +138,3 @@ def imm(graph, k, episode, l):
     R = sampling(graph, k, episode, l)
     Sk, z = node_selection(graph, R, k)
     return Sk
-
-
-def logcnk(n, k):
-    res = 0
-    for i in range(n - k + 1, n + 1):
-        res += math.log(i)
-    for i in range(1, k + 1):
-        res -= math.log(i)
-    return res

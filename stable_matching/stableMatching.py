@@ -1,70 +1,56 @@
 import random
-from abc import ABCMeta, abstractmethod
 from typing import List
 
 
-class School(metaclass=ABCMeta):
-    @abstractmethod
+class School:
     def choice(self, student):
         pass
 
-    @abstractmethod
     def select(self, students: List):
         pass
 
-    @abstractmethod
     def preview(self, students: List):
         pass
 
-    @abstractmethod
     def students(self) -> List:
         pass
 
 
-class Student(metaclass=ABCMeta):
+class Student:
 
-    @abstractmethod
     def preview(self, schools: List):
         pass
 
-    @abstractmethod
     def preference_list(self):
         pass
 
-    @abstractmethod
-    def propose(self):
+    def propose(self) -> School:
         pass
 
-    @abstractmethod
     def rejected_by(self, school):
         pass
 
-    @abstractmethod
     def chosen_by(self, school):
         pass
 
-    @abstractmethod
     def school(self):
         pass
 
-    @abstractmethod
     def matched(self) -> bool:
         pass
 
-    @abstractmethod
     def prefer(self, school) -> bool:
         pass
 
 
 def all_matched(students: List) -> bool:
-    flag = True
     for s in students:
         if not s.matched():
-            flag = False
-    return flag
+            return False
+    return True
 
 
-def choose(students: List) -> Student:
+def find(students: List) -> Student:
     l = list(filter(lambda s: not s.matched(), students))
     return random.choice(l)
 
@@ -75,7 +61,7 @@ def generalized_da(schools: List, students: List):
     for school in schools:
         school.preview(students)
     while not all_matched(students):
-        student = choose(students)
+        student = find(students)
         school = student.propose()
         school.choice(student)
 

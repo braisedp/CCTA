@@ -1,22 +1,6 @@
 import math
 
 
-def q(R, Q, elements):
-    return Q * Gamma(R, elements) / len(R)
-
-
-def Gamma(R, elements):
-    count = 0
-    for rr in R:
-        I = 0
-        for e in elements:
-            if e in rr:
-                I = 1
-                break
-        count += I
-    return count
-
-
 class MatroidConstraint:
     def __init__(self, budget: float, D: int, costs: dict):
         s_ = 0.0

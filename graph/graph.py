@@ -1,5 +1,6 @@
 import random
 import networkx as nx
+from utils.HyperGraph import HyperGraph
 
 
 def read_graph(filename, directed=False):
@@ -9,7 +10,9 @@ def read_graph(filename, directed=False):
         G = nx.DiGraph()
     with open(filename) as f:
         for line in f:
-            e0, e1 = map(int, line.split())
+            words = line.split()
+            e0 = int(words[0])
+            e1 = int(words[1])
             try:
                 G[e0][e1]["weight"] += 1
             except KeyError:
@@ -94,11 +97,11 @@ def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, directed=True):
                 f.write("%d %d %s\n" % (e[1], e[0], X[i]))
 
 
-def generate_rr(graph, v):
-    return generate_rr_ic(graph, v)
+def generate_rr(graph, v, HG: HyperGraph, index):
+    return generate_rr_ic(graph, v, HG, index)
 
 
-def generate_rr_ic(graph, node):
+def generate_rr_ic(graph, node, HG: HyperGraph, index):
     activity_set = list()
     activity_set.append(node)
     activity_nodes = list()
@@ -106,11 +109,12 @@ def generate_rr_ic(graph, node):
     while activity_set:
         new_activity_set = list()
         for seed in activity_set:
-            for node in graph.neighbors(seed):
-                weight = graph[seed][node]['weight']
-                if node not in activity_nodes:
+            for v in graph.neighbors(seed):
+                weight = graph[seed][v]['weight']
+                if v not in activity_nodes:
                     if random.random() < weight:
-                        activity_nodes.append(node)
-                        new_activity_set.append(node)
+                        HG.addFR(v, index)
+                        activity_nodes.append(v)
+                        new_activity_set.append(v)
         activity_set = new_activity_set
-    return activity_nodes
+    HG.addEdge(index, activity_nodes)
