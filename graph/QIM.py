@@ -29,7 +29,7 @@ def sampling(graph, C, k, delta, epsilon, values):
     i_max = math.ceil(math.log2(Q / (sum([values[e] for e in top_k(C, values, k)]) * math.pow(epsilon, 2))))
     theta = 2 * math.pow(1 / 4 * math.sqrt(math.log(6 / delta)) + math.sqrt(1 / 4 * logcnk(n, k) + math.log(6 / delta)),
                          2)
-    print("imax ={},thetamax={}".format(i_max, theta * math.pow(i_max, 2)))
+    print("imax ={},theta_max={}".format(i_max, theta * math.pow(i_max, 2)))
     for i in range(1, i_max):
         delta1 = delta2 = delta / (3 * i_max)
         start = time.time()
@@ -43,8 +43,8 @@ def sampling(graph, C, k, delta, epsilon, values):
 
         count = 0
         while count < theta - len(R_1):
-            l = random.choices(nodes, weights=values, k=2)
-            v1, v2 = l[0], l[1]
+            edge = random.choices(nodes, weights=values, k=2)
+            v1, v2 = edge[0], edge[1]
             generate_rr(graph, v1, R_1, count)
             generate_rr(graph, v2, R_2, count)
             count += 1
@@ -52,7 +52,7 @@ def sampling(graph, C, k, delta, epsilon, values):
 
         print('time to generate rr:{}'.format(end1 - start))
         Si, f = node_selection(C, R_1, k)
-        print('node selection:{}'.format(time.time() - end1))
+        print('time for node selection:{}'.format(time.time() - end1))
 
         sigma_l = math.pow(math.sqrt(Gamma(R_2, Si) + 2 * math.log(1 / delta2) / 9)
                            - math.sqrt(math.log(1 / delta2) / 2), 2) - math.log(1 / delta2) / 18
