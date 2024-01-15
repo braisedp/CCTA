@@ -1,8 +1,9 @@
+import itertools
 import math
 from typing import List
 from stable_matching.stableMatching import School, Student
 from utils.constraints import MatroidConstraint, BudgetConstraint
-from utils.funcs import Gamma
+from utils.funcs import Gamma, q
 
 
 class MChoice:
@@ -133,6 +134,22 @@ class Task(School):
         self.choice_func.refresh(self.S)
         self.select_func.refresh(self.S)
 
+    def prefer(self, new):
+        S = self.S
+        costs = self.costs
+        cost = sum([costs[i] for i in new])
+        for i in range(len(S)):
+            flag = False
+            for R in itertools.combinations(S, i+1):
+                A = list(set(S)-set(R))
+                if sum([costs[e] for e in A]) + cost <= self.budget:
+                    flag = True
+                    if Gamma(self.R, A + new) > Gamma(self.R, S):
+                        return True
+            if not flag:
+                return False
+        return False
+
 
 class Worker(Student):
     def __init__(self, ID):
@@ -186,3 +203,51 @@ class Worker(Student):
         if self.task is None:
             return True
         return self.preference.index(task) < self.preference.index(self.task)
+
+
+def outward_satisfactory(tasks, workers):
+    total_matched_pairs = 0
+    for task in tasks:
+        total_matched_pairs += len(task.students())
+    outward_unsatisfied_pairs = 0
+    for task in tasks:
+        for worker in workers:
+            if worker.prefer(task) and task.prefer([task]):
+                outward_unsatisfied_pairs += 1
+    return 1 - outward_unsatisfied_pairs / total_matched_pairs
+
+
+def overall_satisfactory(tasks, workers):
+    total_matched_pairs = 0
+    for task in tasks:
+        total_matched_pairs += len(task.students())
+    overall_unsatisfied_pairs = 0
+    for task in tasks:
+        P = []
+        visited = {}
+        for worker in workers:
+            visited[worker] = False
+            if worker.prefer(task):
+                P.append(worker)
+        for i in range(len(P)):
+            for new in itertools.combinations(P, i+1):
+                if task.prefer(new):
+                    for worker in new:
+                        if not visited[worker]:
+                            overall_unsatisfied_pairs += 1
+                            visited[worker] = True
+    return 1 - overall_unsatisfied_pairs / total_matched_pairs
+
+
+def individual_rationality_tasks(tasks):
+    L = []
+    for task in tasks:
+        L.append([task.budget, sum(task.costs[e] for e in task.students())])
+    return L
+
+
+def average_utility_buyers(tasks):
+    sum_utility = 0
+    for task in tasks:
+        sum_utility += q(task.R, task.Q, task.students())
+    return sum_utility / len(tasks)
