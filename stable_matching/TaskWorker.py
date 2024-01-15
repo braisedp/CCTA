@@ -16,7 +16,7 @@ class MChoice:
         self.constraint = MatroidConstraint(budget, D, costs)
         self.r = self.constraint.r
 
-    def meet(self, worker):
+    def choose(self, worker):
         weight = Gamma(self.R, self.A + [worker]) - self.U
         if self.constraint.satisfy(self.S + [worker]):
             self.S.append(worker)
@@ -103,7 +103,7 @@ class Task(School):
         self.select_func = BSelect(self.S, self.R, self.budget, costs)
 
     def choice(self, worker):
-        accept, reject = self.choice_func.meet(worker)
+        accept, reject = self.choice_func.choose(worker)
         if accept is not None:
             accept.chosen_by(self)
         if reject is not None:
@@ -212,7 +212,7 @@ def outward_satisfactory(tasks, workers):
     outward_unsatisfied_pairs = 0
     for task in tasks:
         for worker in workers:
-            if worker.prefer(task) and task.prefer([task]):
+            if worker.prefer(task) and task.prefer([worker]):
                 outward_unsatisfied_pairs += 1
     return 1 - outward_unsatisfied_pairs / total_matched_pairs
 
