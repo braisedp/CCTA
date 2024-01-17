@@ -11,12 +11,12 @@ class HyperGraph:
     def __len__(self):
         return self.length
 
-    def addEdge(self, index, rr):
+    def add_edge(self, index, rr):
         self.RR[index] = rr
         self.edges.append(rr)
         self.length += 1
 
-    def addFR(self, v, index):
+    def add_fr(self, v, index):
         self.FR[v].append(index)
 
     def __add__(self, HG2):

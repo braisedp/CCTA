@@ -113,8 +113,8 @@ def generate_rr_ic(graph, node, HG: HyperGraph, index):
                 weight = graph[seed][v]['weight']
                 if v not in activity_nodes:
                     if random.random() < weight:
-                        HG.addFR(v, index)
+                        HG.add_fr(v, index)
                         activity_nodes.append(v)
                         new_activity_set.append(v)
         activity_set = new_activity_set
-    HG.addEdge(index, activity_nodes)
+    HG.add_edge(index, activity_nodes)

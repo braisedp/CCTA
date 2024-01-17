@@ -14,7 +14,7 @@ class MChoice:
         self.W = {}
         self.U = 0.0
         self.constraint = MatroidConstraint(budget, D, costs)
-        self.r = self.constraint.r
+        self.r = 2.0
 
     def choose(self, worker):
         weight = Gamma(self.R, self.A + [worker]) - self.U
@@ -23,7 +23,7 @@ class MChoice:
             self.A.append(worker)
             self.W[worker] = weight
             self.U += weight
-            return worker, None
+            return worker, []
         else:
             w_ = None
             min_ = math.inf
@@ -41,13 +41,102 @@ class MChoice:
                     self.A.append(worker)
                     self.W[worker] = weight
                     self.U += weight
-                    return worker, w_
+                    return worker, [w_]
         return None, worker
 
     def refresh(self, S):
         self.S = S
         self.A = []
         self.W = {}
+        self.U = 0.0
+
+
+class BChoice:
+    def __init__(self, S, R, budget, costs):
+        self.R = R  # Hyper Graph
+        self.S = S  # Solution
+        self.A = []  # Shadow Set
+        self.save = None  # the only element : x<1
+        self.save_frac = 1.0  # x
+        self.W = {}  # v of all elements
+        self.U = 0.0  # v(A)
+        self.rest = budget  # budget left current
+        self.budget = budget  # total budget
+        self.costs = costs  # cost dict of all elements
+
+    def choose(self, worker):
+        v = Gamma(self.R, [worker] + self.A) - self.U  # v(u)
+        cost = self.costs[worker]  # w(u)
+        # if insert u do not violate the budget constraint; in this case, rest >= 0 after insert u
+        if self.rest >= cost:
+            self.S.append(worker)
+            self.A.append(worker)
+            self.W[worker] = v
+            self.rest = self.rest - cost
+            self.U += v
+            return worker, []
+        else:
+            if self.save is not None:
+                # if there exists one element with x < 1, in this case rest = 0 before insert u
+                ordered_list = sorted(self.S + [self.save], key=lambda e: self.W[e] / self.costs[e])
+            else:
+                # if all elements have x = 1, in this case rest >= 0 and rest < cost before insert u
+                ordered_list = sorted(self.S, key=lambda e: self.W[e] / self.costs[e])
+            # find min k such that sum(costs[i]|(i <= k)) + rest >= cost
+            span = self.rest
+            flag = False
+            k = 0
+            while v / cost > 2.0 * self.W[ordered_list[k]] / self.costs[ordered_list[k]]:
+                if k == 0:
+                    span += self.costs[ordered_list[k]] * self.save_frac
+                else:
+                    span += self.costs[ordered_list[k]]
+                if span >= cost:
+                    flag = True
+                    break
+                k += 1
+            # if k exists, then remove 0,...,k from S
+            if flag:
+                if self.save is None:
+                    self.S.remove(ordered_list[0])
+                for i in range(1, k):
+                    self.S.remove(ordered_list[i])
+                x = (span - cost) / self.costs[ordered_list[k]]
+                if self.save is None:
+                    reject = ordered_list[:k + 1]
+                else:
+                    reject = ordered_list[1: k+1]
+                # if x == 0, there is no saved element
+                if x == 0.0:
+                    self.save = None
+                    self.save_frac = 1.0
+                else:
+                    # else, the lowest element doesn't belong to S, it is the saved element
+                    self.save = ordered_list[k]
+                    # x of the saved element is x
+                    self.save_frac = x
+                # 0,...,k are removed, which means they are rejected
+                # after insert u, there is no budget left
+                self.rest = 0.0
+                # u is inserted
+                self.S.append(worker)
+                self.A.append(worker)
+                self.W[worker] = v
+                self.U += v
+                return worker, reject
+        # if u is rejected, then worker and the saved element is rejected
+        if self.save is not None:
+            return None, [worker, self.save]
+        return None, [worker]
+
+    def refresh(self, S):
+        self.S = S
+        self.A = []
+        self.W = {}
+        self.save = None
+        self.save_frac = 1.0
+        self.U = 0.0
+        self.rest = self.budget
 
 
 class BSelect:
@@ -99,15 +188,16 @@ class Task(School):
 
     def set_costs(self, costs, D):
         self.costs = costs
-        self.choice_func = MChoice(self.S, self.R, self.budget, D, costs)
+        # self.choice_func = MChoice(self.S, self.R, self.budget, D, costs)
+        self.choice_func = BChoice(self.S, self.R, self.budget, self.costs)
         self.select_func = BSelect(self.S, self.R, self.budget, costs)
 
     def choice(self, worker):
         accept, reject = self.choice_func.choose(worker)
         if accept is not None:
             accept.chosen_by(self)
-        if reject is not None:
-            reject.rejected_by(self)
+        for r in reject:
+            r.rejected_by(self)
 
     def select(self, workers: List):
         # print('task:{},processing workers:{}'.format(self.id,[w.id for w in workers]))
@@ -140,8 +230,8 @@ class Task(School):
         cost = sum([costs[i] for i in new])
         for i in range(len(S)):
             flag = False
-            for R in itertools.combinations(S, i+1):
-                A = list(set(S)-set(R))
+            for R in itertools.combinations(S, i + 1):
+                A = list(set(S) - set(R))
                 if sum([costs[e] for e in A]) + cost <= self.budget:
                     flag = True
                     if Gamma(self.R, A + new) > Gamma(self.R, S):
@@ -230,8 +320,8 @@ def overall_satisfactory(tasks, workers):
             if worker.prefer(task):
                 P.append(worker)
         for i in range(len(P)):
-            for new in itertools.combinations(P, i+1):
-                if task.prefer(new):
+            for new in itertools.combinations(P, i + 1):
+                if task.prefer(list(new)):
                     for worker in new:
                         if not visited[worker]:
                             overall_unsatisfied_pairs += 1
@@ -242,7 +332,7 @@ def overall_satisfactory(tasks, workers):
 def individual_rationality_tasks(tasks):
     L = []
     for task in tasks:
-        L.append([task.budget, sum(task.costs[e] for e in task.students())])
+        L.append([task.rest, sum(task.costs[e] for e in task.students())])
     return L
 
 
