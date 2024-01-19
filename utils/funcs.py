@@ -15,6 +15,8 @@ def Gamma(HG, elements):
 
 def top_k(collection, values, k):
     C = collection[:]
+    if k >= len(collection):
+        return C
     for i in range(k):
         arg = i
         for ii in range(i, len(C)):
@@ -22,6 +24,16 @@ def top_k(collection, values, k):
                 arg = ii
         C[i], C[arg] = C[arg], C[i]
     return C[:k]
+
+
+def max_k(budget, costs: dict):
+    values = sorted(costs.values())
+    Sum = 0.0
+    for k in range(len(values)):
+        Sum += values[k]
+        if Sum > budget:
+            return k
+    return len(values)
 
 
 def logcnk(n, k):

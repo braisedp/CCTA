@@ -1,6 +1,8 @@
 import random
 import networkx as nx
 from utils.HyperGraph import HyperGraph
+import pandas as pd
+import numpy as np
 
 
 def read_graph(filename, directed=False):
@@ -10,7 +12,7 @@ def read_graph(filename, directed=False):
         G = nx.DiGraph()
     with open(filename) as f:
         for line in f:
-            words = line.split()
+            words = line.split(',')
             e0 = int(words[0])
             e1 = int(words[1])
             try:
@@ -27,10 +29,10 @@ def read_graph_with_weights(filename, directed=False):
         G = nx.DiGraph()
     with open(filename) as f:
         for line in f:
-            l = line.split()
-            e0 = int(l[0])
-            e1 = int(l[1])
-            w = float(l[2])
+            words = line.split()
+            e0 = int(words[0])
+            e1 = int(words[1])
+            w = float(words[2])
             G.add_edge(e0, e1, weight=w)
     return G
 
@@ -44,6 +46,18 @@ def read_graph_without_weights(filename, directed=False):
         for line in f:
             e0, e1 = map(int, line.split())
             G.add_edge(e0, e1)
+    return G
+
+
+def read_graph_from_csv(filename, task, directed=False):
+    if not directed:
+        G = nx.Graph()
+    else:
+        G = nx.DiGraph()
+    df = pd.read_csv(filename)
+    for i in range(len(df)):
+        data = df.iloc[i, [1, 2, task + 3]]
+        G.add_edge(int(data.iloc[0]), int(data.iloc[1]), weight=float(data.iloc[2]))
     return G
 
 
@@ -86,15 +100,34 @@ def gen_prb(n, mu, sigma, lower=0, upper=1):
     return X.rvs(n)
 
 
-def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, directed=True):
+def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, undirected=True):
     G = read_graph(i_flnm)
     m = len(G.edges())
     X = gen_prb(m, mu, sigma)
     with open(o_flnm, "w+") as f:
         for i, e in enumerate(G.edges()):
             f.write("%d %d %s\n" % (e[0], e[1], X[i]))
-            if directed:
+            if undirected:
                 f.write("%d %d %s\n" % (e[1], e[0], X[i]))
+
+
+def wrt_prb_tasks(i_flnm, o_flnm, n, mu=0.09, sigma=0.06, directed=False):
+    G = read_graph(i_flnm)
+    m = len(G.edges())
+    print(m)
+    o_nodes = [e[0] for e in G.edges]
+    i_nodes = [e[1] for e in G.edges]
+    if not directed:
+        o_nodes += [e[1] for e in G.edges]
+        i_nodes += [e[0] for e in G.edges]
+    df = pd.DataFrame({'from': o_nodes, 'to': i_nodes})
+    for i in range(n):
+        prb = np.array(gen_prb(m, mu=mu, sigma=sigma))
+        if not directed:
+            prb = np.tile(prb, 2)
+        df.insert(loc=2 + i, column='{}'.format(i), value=prb)
+    print(len(df))
+    df.to_csv(o_flnm)
 
 
 def generate_rr(graph, v, HG: HyperGraph, index):

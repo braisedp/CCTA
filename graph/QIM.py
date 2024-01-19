@@ -1,7 +1,8 @@
 import random
 import math
 import time
-from graph import generate_rr
+
+from graph.graph import generate_rr
 from utils.funcs import Gamma, top_k, logcnk
 from utils.HyperGraph import HyperGraph
 
@@ -24,46 +25,35 @@ def sampling(graph, C, k, delta, epsilon, values):
     R_2 = HyperGraph(nodes)
     n = len(C)
     Q = sum(values)
-    # worker_num = 8
-    # workers = create_worker(graph, worker_num, values)
+    # ceil(log_2(theta_max/theta_0))
     i_max = math.ceil(math.log2(Q / (sum([values[e] for e in top_k(C, values, k)]) * math.pow(epsilon, 2))))
+    print('i_max:{}'.format(i_max))
+    # theta_0
     theta = 2 * math.pow(1 / 4 * math.sqrt(math.log(6 / delta)) + math.sqrt(1 / 4 * logcnk(n, k) + math.log(6 / delta)),
                          2)
-    print("imax ={},theta_max={}".format(i_max, theta * math.pow(i_max, 2)))
     for i in range(1, i_max):
+        # start = time.time()
         delta1 = delta2 = delta / (3 * i_max)
-        start = time.time()
-
-        # for ii in range(worker_num):
-        #     workers[ii].inQ.put((theta - len(R_1)) / worker_num, len(R_1), ii)
-        # for w in workers:
-        #     R1_list, R2_list = w.outQ.get()
-        #     R_1 += R1_list
-        #     R_2 += R2_list
-
+        # generate reverse reachable set
         count = 0
         while count < theta - len(R_1):
-            edge = random.choices(nodes, weights=values, k=2)
-            v1, v2 = edge[0], edge[1]
+            v1, v2 = random.choices(nodes, weights=values, k=2)
             generate_rr(graph, v1, R_1, count)
             generate_rr(graph, v2, R_2, count)
             count += 1
-        end1 = time.time()
-
-        print('time to generate rr:{}'.format(end1 - start))
+        # print('time1:{}'.format(time.time() - start))
         Si, f = node_selection(C, R_1, k)
-        print('time for node selection:{}'.format(time.time() - end1))
-
+        # print('time2:{}'.format(time.time() - start))
+        # lower bound of node selection
         sigma_l = math.pow(math.sqrt(Gamma(R_2, Si) + 2 * math.log(1 / delta2) / 9)
                            - math.sqrt(math.log(1 / delta2) / 2), 2) - math.log(1 / delta2) / 18
+        # upper bound of optimum
         sigma_u = math.pow(math.sqrt(f_u(C, Si, f, R_1, k) + math.log(1 / delta1) / 2)
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
-        # print(sigma_l / sigma_u)
-        # print(len(R_1))
+        # print('time3:{}'.format(time.time() - start))
         if sigma_l / sigma_u >= 0.25:
             break
         theta *= 2
-    # finish_worker(workers)
     return R_1
 
 
