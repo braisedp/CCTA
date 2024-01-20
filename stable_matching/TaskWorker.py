@@ -131,7 +131,7 @@ class BChoice:
                 self.U += v
                 return reject
         # if u is rejected, then worker and the saved element is rejected
-        return  [worker]
+        return [worker]
 
     def refresh(self, S):
         self.S = S
@@ -147,11 +147,11 @@ class MaxCoverChoice:
     def __init__(self, S, HG, budget, costs):
         self.HG = HG  # Hyper Graph
         self.S = S  # Solution
-        self.save = None  # saved element
-        self.save_frac = 1.0    # fraction of the saved item
-        self.z = [0.0] * len(HG)  #
-        self.Z = {}
-        self.Rhos = {}
+        self.save = None  # saved item
+        self.save_frac = 1.0  # fraction of the saved item
+        self.z = [0.0] * len(HG)  # fraction of all elements
+        self.Z = {}  # fraction of all items on all elements
+        self.Rhos = {}  # density of all items
         self.budget = budget  # total budget
         self.costs = costs  # cost dict of all elements
 
@@ -183,15 +183,15 @@ class MaxCoverChoice:
                     self.S.remove(w)
                     reject.append(w)
                     for element in self.Z[w]:
-                        self.z -= self.Z[w][element]
+                        self.z[element] -= self.Z[w][element]
                         self.Z.pop(w)
                 w = ordered_list[k]
                 if weight > self.budget:
                     self.S.remove(w)
                     reject.append(w)
-                    x = 1.0- (weight-self.budget)/self.costs[w]
+                    x = 1.0 - (weight - self.budget) / self.costs[w]
                     for element in self.Z[w]:
-                        self.z[element] -=  (1.0-x) * self.Z[w][element]
+                        self.z[element] -= (1.0 - x) * self.Z[w][element]
                         self.Z[w][element] = x * self.Z[w][element]
                     self.save = w
                     self.save_frac = x
@@ -199,7 +199,7 @@ class MaxCoverChoice:
 
             else:
                 reject = []
-                ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True)+[self.save]
+                ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True) + [self.save]
                 weight = 0.0
                 k = 0
                 for i in range(len(ordered_list)):
@@ -220,10 +220,10 @@ class MaxCoverChoice:
                 w = ordered_list[k]
                 if weight > self.budget:
                     if w == self.save:
-                        x = self.save_frac - (weight-self.budget)/self.costs[w]
+                        x = self.save_frac - (weight - self.budget) / self.costs[w]
                         for element in self.Z[w]:
-                            self.z[element] -= (1.0-x/self.save_frac) * self.Z[w][element]
-                            self.Z[w][element] *= x/self.save_frac
+                            self.z[element] = self.z[element] - (1.0 - x / self.save_frac) * self.Z[w][element]
+                            self.Z[w][element] *= x / self.save_frac
                         if x == 0.0:
                             self.Z.pop(w)
                             self.save = None
@@ -235,12 +235,12 @@ class MaxCoverChoice:
                         reject.append(w)
                         x = 1.0 - (weight - self.budget) / self.costs[w]
                         for element in self.Z[w]:
-                            self.z[element] -= (1.0 - x) * self.Z[w][element]
+                            self.z[element] = self.z[element] - (1.0 - x) * self.Z[w][element]
                             self.Z[w][element] = x * self.Z[w][element]
                         self.save = w
                         self.save_frac = x
                 return reject
-        return None, [worker]
+        return [worker]
 
 
 class BSelect:
@@ -300,6 +300,9 @@ class Task(School):
     def set_choice_budget(self):
         self.choice_func = BChoice(self.S, self.R, self.budget, self.costs)
 
+    def set_choice_max_cover(self):
+        self.choice_func = MaxCoverChoice(self.S, self.R, self.budget, self.costs)
+
     def choice(self, worker: Student):
         if self.costs[worker] <= self.budget:
             reject = self.choice_func.choose(worker)
@@ -346,7 +349,7 @@ class Task(School):
         k = max_k(cost, costs)
         for i in range(k):
             for R in itertools.combinations(S, i + 1):
-                A = list(set(S)-set(R))
+                A = list(set(S) - set(R))
                 if sum([costs[e] for e in A]) + cost <= self.budget:
                     if gamma_workers(self.R, A + new) > gamma_workers(self.R, S):
                         return True
