@@ -1,12 +1,9 @@
 class HyperGraph:
-    def __init__(self, elements):
-        self.elements = elements
+    def __init__(self):
         self.edges = []
         self.RR = {}
         self.FR = {}
         self.length = 0
-        for e in elements:
-            self.FR[e] = []
 
     def __len__(self):
         return self.length
@@ -17,14 +14,12 @@ class HyperGraph:
         self.length += 1
 
     def add_fr(self, v, index):
-        self.FR[v].append(index)
+        if v in self.FR:
+            self.FR[v].append(index)
+        else:
+            self.FR[v] = [index]
 
-    def __add__(self, HG2):
-        HG = HyperGraph(self.elements)
-        HG.edges = self.edges + HG2.edges
-        HG.RR.update(self.RR)
-        HG.RR.update(HG2.RR)
-        for key in self.FR:
-            HG.FR[key] = self.FR[key] + HG2.FR[key]
-        HG.length = self.length + HG2.length
-        return HG
+    def get_fr(self, v):
+        if v in self.FR:
+            return self.FR[v]
+        return []
