@@ -21,8 +21,8 @@ def f_u(C, Si, f, R_1, k):
 
 def sampling(graph, C, k, delta, epsilon, values):
     nodes = list(graph.nodes)
-    R_1 = HyperGraph(nodes)
-    R_2 = HyperGraph(nodes)
+    R_1 = HyperGraph()
+    R_2 = HyperGraph()
     n = len(C)
     Q = sum(values)
     # ceil(log_2(theta_max/theta_0))

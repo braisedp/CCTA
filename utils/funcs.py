@@ -8,7 +8,7 @@ def q(HG, Q, elements):
 def Gamma(HG, elements):
     visited = {}
     for v in elements:
-        for e in HG.FR[v]:
+        for e in HG.get_fr(v):
             visited[e] = True
     return list(visited.values()).count(True)
 

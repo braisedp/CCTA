@@ -9,7 +9,7 @@ from utils.funcs import q, max_k
 def gamma_workers(HG, workers):
     visited = {}
     for w in workers:
-        for e in HG.FR[w.idx]:
+        for e in HG.get_fr(w.idx):
             visited[e] = True
     return list(visited.values()).count(True)
 
@@ -156,7 +156,7 @@ class MaxCoverChoice:
         self.costs = costs  # cost dict of all elements
 
     def choose(self, worker):
-        nodes = self.HG.FR[worker.idx]
+        nodes = self.HG.get_fr(worker.idx)
         cost = self.costs[worker] / self.budget
         rho = 0.0
         for node in nodes:
@@ -166,7 +166,7 @@ class MaxCoverChoice:
             self.S.append(worker)
             self.Rhos[worker] = rho
             self.Z[worker] = {}
-            for node in self.HG.FR[worker.idx]:
+            for node in self.HG.get_fr(worker.idx):
                 self.Z[worker][node] = 1.0 - self.z[node]
                 self.z[node] = 1.0
             if self.save is None:
@@ -174,11 +174,13 @@ class MaxCoverChoice:
                 ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True)
                 weight = 0.0
                 k = 0
-                for i in range(len(ordered_list)):
-                    weight += self.costs[ordered_list[i]]
+                while k < len(ordered_list):
+                    weight += self.costs[ordered_list[k]]
                     if weight >= self.budget:
-                        k = i
                         break
+                    k += 1
+                if weight <= self.budget:
+                    return reject
                 for w in ordered_list[k + 1:]:
                     self.S.remove(w)
                     reject.append(w)
@@ -202,20 +204,20 @@ class MaxCoverChoice:
                 ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True) + [self.save]
                 weight = 0.0
                 k = 0
-                for i in range(len(ordered_list)):
-                    if i == len(ordered_list) - 1:
-                        weight += self.costs[ordered_list[i]] * self.save_frac
+                while k < len(ordered_list):
+                    if k == len(ordered_list) - 1:
+                        weight += self.costs[ordered_list[k]] * self.save_frac
                     else:
-                        weight += self.costs[ordered_list[i]]
+                        weight += self.costs[ordered_list[k]]
                     if weight >= self.budget:
-                        k = i
                         break
+                    k += 1
                 for w in ordered_list[k + 1:]:
                     if w in self.S:
                         self.S.remove(w)
                         reject.append(w)
                     for element in self.Z[w]:
-                        self.z -= self.Z[w][element]
+                        self.z[element] -= self.Z[w][element]
                     self.Z.pop(w)
                 w = ordered_list[k]
                 if weight > self.budget:
@@ -347,8 +349,10 @@ class Task(School):
     def prefer(self, new):
         S = self.S
         costs = {}
+        used = 0.0
         for worker in S:
             costs[worker] = self.costs[worker]
+            used += costs[worker]
         cost = sum([self.costs[i] for i in new])
         if cost > self.budget:
             return False
@@ -359,6 +363,18 @@ class Task(School):
                 if sum([costs[e] for e in A]) + cost <= self.budget:
                     if gamma_workers(self.R, A + new) > gamma_workers(self.R, S):
                         return True
+        return False
+
+    def have_vacancy_for(self, new):
+        S = self.S
+        costs = {}
+        used = 0.0
+        for worker in S:
+            costs[worker] = self.costs[worker]
+            used += costs[worker]
+        cost = sum([self.costs[i] for i in new])
+        if cost + used <= self.budget:
+            return True
         return False
 
     def __str__(self):
@@ -474,3 +490,15 @@ def average_utility_buyers(tasks):
     for task in tasks:
         sum_utility += q(task.HG, task.Q, task.students())
     return sum_utility / len(tasks)
+
+
+def waste_pairwise(tasks, workers):
+    wasted_pairs = 0
+    total_matched_pairs = 0
+    for task in tasks:
+        total_matched_pairs += len(task.students())
+    for task in tasks:
+        for worker in workers:
+            if worker.prefer(task) and task.have_vacancy_for([worker]):
+                wasted_pairs += 1
+    return wasted_pairs/total_matched_pairs
