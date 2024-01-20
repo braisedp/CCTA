@@ -184,7 +184,7 @@ class MaxCoverChoice:
                     reject.append(w)
                     for element in self.Z[w]:
                         self.z[element] -= self.Z[w][element]
-                        self.Z.pop(w)
+                    self.Z.pop(w)
                 w = ordered_list[k]
                 if weight > self.budget:
                     self.S.remove(w)
@@ -216,7 +216,7 @@ class MaxCoverChoice:
                         reject.append(w)
                     for element in self.Z[w]:
                         self.z -= self.Z[w][element]
-                        self.Z.pop(w)
+                    self.Z.pop(w)
                 w = ordered_list[k]
                 if weight > self.budget:
                     if w == self.save:
@@ -241,6 +241,14 @@ class MaxCoverChoice:
                         self.save_frac = x
                 return reject
         return [worker]
+
+    def refresh(self, S):
+        self.S = S  # Solution
+        self.save = None  # saved item
+        self.save_frac = 1.0  # fraction of the saved item
+        self.z = [0.0] * len(self.HG)  # fraction of all elements
+        self.Z = {}  # fraction of all items on all elements
+        self.Rhos = {}  # density of all items
 
 
 class BSelect:
@@ -335,8 +343,6 @@ class Task(School):
 
     def refresh(self):
         self.S = []
-        self.choice_func.refresh(self.S)
-        self.select_func.refresh(self.S)
 
     def prefer(self, new):
         S = self.S
@@ -368,6 +374,7 @@ class Worker(Student):
 
     def refresh(self):
         self.task = None
+        self.propose_list = self.preference.copy()
 
     def set_preference(self, values):
         self.preference = sorted(values.keys(), key=lambda x: values[x], reverse=True)
