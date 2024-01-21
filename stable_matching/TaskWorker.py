@@ -320,17 +320,18 @@ class Task(School):
             r.rejected_by(self)
 
     def select(self, workers: list):
-        print('task:{},processing workers:{}'.format(self.idx, [w.idx for w in workers]))
+        print(self)
         S = self.select_func.select(workers.copy())
         dispose = set(self.S)-set(S)
+        # print('dispose:{}'.format([d.idx for d in dispose]))
         for w in dispose:
             self.dispose(w)
             w.disposed()
-            print('dispose:{}'.format(w.idx))
-        self.S = S
+        # print('pre select:{}'.format([s.idx for s in self.S]))
+        # print('select:{}'.format([s.idx for s in S]))
         for w in S:
-            print('select:{}'.format(w.idx))
             w.selected_by(self)
+        self.S = S
         # print('S:{}'.format([w.id for w in self.S]))
 
     def preview(self, workers: List):
@@ -341,6 +342,7 @@ class Task(School):
 
     def dispose(self, worker):
         self.S.remove(worker)
+        worker.disposed()
 
     def refresh(self):
         self.S = []
