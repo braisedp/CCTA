@@ -3,27 +3,28 @@ import multiprocessing as mp
 
 
 class Worker(mp.Process):
-    def __init__(self, graph, seeds, outQ, count):
+    def __init__(self, graph, seeds, values, outQ, count):
         super(Worker, self).__init__(target=self.start)
         self.graph = graph
         self.seeds = seeds
+        self.values = values
         self.outQ = outQ
         self.count = count
         self.sum = 0
 
     def run(self):
         while self.count > 0:
-            res = ise(self.graph, self.seeds)
+            res = ise(self.graph, self.seeds, self.values)
             self.sum += res
             self.count -= 1
             if self.count == 0:
                 self.outQ.put(self.sum)
 
 
-def create_worker(graph, seeds, num, task_num):
+def create_worker(graph, seeds, values, num, task_num):
     worker = []
     for i in range(num):
-        worker.append(Worker(graph, seeds, mp.Queue(), task_num))
+        worker.append(Worker(graph, seeds, values, mp.Queue(), task_num))
         worker[i].start()
     return worker
 
@@ -37,8 +38,8 @@ def finish_worker(worker):
         w.terminate()
 
 
-def ise(graph, seeds):
-    return IC(graph, seeds)
+def ise(graph, seeds, values):
+    return IC_v(graph, seeds, values)
 
 
 def IC(graph, seeds):
@@ -62,6 +63,24 @@ def IC(graph, seeds):
     return count
 
 
+def IC_v(graph, seeds, values):
+    count = sum([values[seed] for seed in seeds])
+    activity_set = set(seeds)
+    active_nodes = set(seeds)
+    while activity_set:
+        new_activity_set = set()
+        for seed in activity_set:
+            for node in graph.neighbors(seed):
+                weight = graph[seed][node]['weight']
+                if node not in active_nodes:
+                    if random.random() < weight:
+                        active_nodes.add(node)
+                        count += values[node]
+                        new_activity_set.add(node)
+        activity_set = new_activity_set
+    return count
+
+
 def calculate_influence(Sk, graph):
     seeds = Sk
     worker_num = 8
@@ -71,3 +90,14 @@ def calculate_influence(Sk, graph):
         result.append(w.outQ.get())
     finish_worker(worker)
     return sum(result) / 10000
+
+
+def calculate_influence_quality(Sk, graph, values):
+    seeds = Sk
+    worker_num = 10
+    worker = create_worker(graph, seeds, values, worker_num, int(1000 / worker_num))
+    result = []
+    for w in worker:
+        result.append(w.outQ.get())
+    finish_worker(worker)
+    return sum(result) / 1000
