@@ -19,17 +19,21 @@ def f_u(C, Si, f, R_1, k):
     return val
 
 
-def sampling(graph, C, k, delta, epsilon, values):
+def sampling(graph, C, k, delta, epsilon, values, method='normal'):
     nodes = list(graph.nodes)
     R_1 = HyperGraph()
     R_2 = HyperGraph()
     n = len(C)
     Q = sum(values)
+    if method == 'normal':
+        frac = 1.0 - 1.0/math.e
+    else:
+        frac = 1/4
     # ceil(log_2(theta_max/theta_0))
     i_max = math.ceil(math.log2(Q / (sum([values[e] for e in top_k(C, values, k)]) * math.pow(epsilon, 2))))
-    print('i_max:{}'.format(i_max))
+    # print('i_max:{}'.format(i_max))
     # theta_0
-    theta = 2 * math.pow(1 / 4 * math.sqrt(math.log(6 / delta)) + math.sqrt(1 / 4 * logcnk(n, k) + math.log(6 / delta)),
+    theta = 2 * math.pow(frac * math.sqrt(math.log(6 / delta)) + math.sqrt(frac * logcnk(n, k) + math.log(6 / delta)),
                          2)
     for i in range(1, i_max):
         # start = time.time()
@@ -42,7 +46,10 @@ def sampling(graph, C, k, delta, epsilon, values):
             generate_rr(graph, v2, R_2, count)
             count += 1
         # print('time1:{}'.format(time.time() - start))
-        Si, f = node_selection(C, R_1, k)
+        if method == 'normal':
+            Si, f = node_selection_normal(C, R_1, k)
+        else:
+            Si, f = node_selection_sq(C, R_1, k)
         # print('time2:{}'.format(time.time() - start))
         # lower bound of node selection
         sigma_l = math.pow(math.sqrt(Gamma(R_2, Si) + 2 * math.log(1 / delta2) / 9)
@@ -51,13 +58,13 @@ def sampling(graph, C, k, delta, epsilon, values):
         sigma_u = math.pow(math.sqrt(f_u(C, Si, f, R_1, k) + math.log(1 / delta1) / 2)
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
         # print('time3:{}'.format(time.time() - start))
-        if sigma_l / sigma_u >= 0.25:
+        if sigma_l / sigma_u >= frac:
             break
         theta *= 2
     return R_1
 
 
-def node_selection(C, R, k):
+def node_selection_sq(C, R, k):
     random.shuffle(C)
     S = []
     A = []
@@ -81,7 +88,19 @@ def node_selection(C, R, k):
     return S, Gamma(R, S)
 
 
+def node_selection_normal(C, R, k):
+    S = []
+    U = 0.0
+    N = C.copy()
+    for _ in range(k):
+        n = max(N, key=lambda x: Gamma(R, S+[x]) - U)
+        N.remove(n)
+        S.append(n)
+        U = Gamma(R, S+[n])
+    return S, U
+
+
 def QIM(graph, C, k, delta, epsilon, values):
     R = sampling(graph, C, k, delta, epsilon, values)
-    Sk, z = node_selection(C, R, k)
+    Sk, z = node_selection_sq(C, R, k)
     return Sk

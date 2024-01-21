@@ -1,6 +1,8 @@
 import itertools
 import math
 from typing import List
+
+from graph.ISE import calculate_influence_quality
 from stable_matching.stableMatching import School, Student
 from utils.constraints import MatroidConstraint, BudgetConstraint
 from utils.funcs import q, max_k
@@ -12,6 +14,11 @@ def gamma_workers(HG, workers):
         for e in HG.get_fr(w.idx):
             visited[e] = True
     return list(visited.values()).count(True)
+
+
+def calculate_influence_workers(workers, G, values):
+    Sk = [worker.idx for worker in workers]
+    return calculate_influence_quality(Sk, G, values)
 
 
 class MChoice:
@@ -254,39 +261,21 @@ class MaxCoverChoice:
 
 
 class BSelect:
-    def __init__(self, S, R, budget, costs):
-        self.S = S
+    def __init__(self, R, budget, costs):
         self.R = R
         self.constraint = BudgetConstraint(budget, costs)
 
     def select(self, workers):
         S = []
-        while True:
-            v_max = 0
-            v_e = None
-            for e in workers:
-                v = (gamma_workers(self.R, S + [e]) - gamma_workers(self.R, S)) / self.constraint.costs[e]
-                if v > v_max:
-                    v_max = v
-                    v_e = e
-            if v_e is not None and self.constraint.satisfy(S + [v_e]):
+        while self.constraint.satisfy(S) and len(workers) > 0:
+            V = {}
+            for worker in workers:
+                V[worker] = gamma_workers(self.R, S+[worker])
+            v_e = max(workers, key=lambda x: V[x])
+            if self.constraint.satisfy(S + [v_e]):
                 S.append(v_e)
-                workers.remove(v_e)
-            else:
-                break
-        dispose = []
-        for w in workers:
-            if w in self.S:
-                dispose.append(w)
-        for s in self.S:
-            if s not in S:
-                self.S.remove(s)
-        for s in S:
-            self.S.append(s)
-        return S, dispose
-
-    def refresh(self, S):
-        self.S = S
+            workers.remove(v_e)
+        return S
 
 
 class Task(School):
@@ -299,10 +288,17 @@ class Task(School):
         self.S = []
         self.R = R
         self.Q = Q
+        self.G = None
+        self.values = None
+        self. v = 0.0
 
     def initialize(self, costs):
         self.costs = costs
-        self.select_func = BSelect(self.S, self.R, self.budget, costs)
+        self.select_func = BSelect(self.R, self.budget, costs)
+
+    def set_graph(self, graph, values):
+        self.G = graph
+        self.values = values
 
     def set_choice_matroid(self, D):
         self.choice_func = MChoice(self.S, self.R, self.budget, D, self.costs)
@@ -323,14 +319,17 @@ class Task(School):
         for r in reject:
             r.rejected_by(self)
 
-    def select(self, workers: List[Student]):
-        # print('task:{},processing workers:{}'.format(self.id,[w.id for w in workers]))
-        S, dispose = self.select_func.select(workers)
+    def select(self, workers: list):
+        print('task:{},processing workers:{}'.format(self.idx, [w.idx for w in workers]))
+        S = self.select_func.select(workers.copy())
+        dispose = set(self.S)-set(S)
         for w in dispose:
+            self.dispose(w)
             w.disposed()
-            # print('dispose:{}'.format(w.id))
+            print('dispose:{}'.format(w.idx))
+        self.S = S
         for w in S:
-            # print('select:{}'.format(w.id))
+            print('select:{}'.format(w.idx))
             w.selected_by(self)
         # print('S:{}'.format([w.id for w in self.S]))
 
@@ -346,7 +345,10 @@ class Task(School):
     def refresh(self):
         self.S = []
 
-    def prefer(self, new):
+    def estimate(self):
+        self.v = calculate_influence_workers(self.S, self.G, self.values)
+
+    def prefer(self, new, ise=False):
         S = self.S
         costs = {}
         used = 0.0
@@ -361,8 +363,12 @@ class Task(School):
             for R in itertools.combinations(S, i + 1):
                 A = list(set(S) - set(R))
                 if sum([costs[e] for e in A]) + cost <= self.budget:
-                    if gamma_workers(self.R, A + new) > gamma_workers(self.R, S):
-                        return True
+                    if not ise:
+                        if gamma_workers(self.R, A + new) > gamma_workers(self.R, S):
+                            return True
+                    if ise:
+                        if calculate_influence_workers(A + new, self.G, self.values) > self.v:
+                            return True
         return False
 
     def have_vacancy_for(self, new):
@@ -440,19 +446,19 @@ class Worker(Student):
         return str(self.idx)
 
 
-def outward_satisfactory(tasks, workers):
+def outward_satisfactory(tasks: list[Task], workers, ise=False):
     total_matched_pairs = 0
     for task in tasks:
         total_matched_pairs += len(task.students())
     outward_unsatisfied_pairs = 0
     for task in tasks:
         for worker in workers:
-            if worker.prefer(task) and task.prefer([worker]):
+            if worker.prefer(task) and task.prefer([worker], ise):
                 outward_unsatisfied_pairs += 1
     return 1 - outward_unsatisfied_pairs / total_matched_pairs
 
 
-def overall_satisfactory(tasks, workers):
+def overall_satisfactory(tasks, workers, ise=False):
     total_matched_pairs = 0
     for task in tasks:
         total_matched_pairs += len(task.students())
@@ -470,7 +476,7 @@ def overall_satisfactory(tasks, workers):
         k = max_k(task.budget, costs)
         for i in range(k):
             for new in itertools.combinations(P, i + 1):
-                if task.prefer(list(new)):
+                if task.prefer(list(new), ise):
                     for worker in new:
                         if not visited[worker]:
                             overall_unsatisfied_pairs += 1
@@ -488,7 +494,7 @@ def individual_rationality_tasks(tasks):
 def average_utility_buyers(tasks):
     sum_utility = 0
     for task in tasks:
-        sum_utility += q(task.HG, task.Q, task.students())
+        sum_utility += calculate_influence_workers(task.students(), task.G, task.values)
     return sum_utility / len(tasks)
 
 
@@ -501,4 +507,4 @@ def waste_pairwise(tasks, workers):
         for worker in workers:
             if worker.prefer(task) and task.have_vacancy_for([worker]):
                 wasted_pairs += 1
-    return wasted_pairs/total_matched_pairs
+    return wasted_pairs / total_matched_pairs

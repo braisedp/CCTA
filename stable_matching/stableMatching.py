@@ -51,8 +51,8 @@ def all_matched(students: List) -> bool:
 
 
 def find(students: List) -> Student:
-    l = list(filter(lambda s: not s.matched(), students))
-    return random.choice(l)
+    student_list = list(filter(lambda s: not s.matched(), students))
+    return random.choice(student_list)
 
 
 def generalized_da(schools: List, students: List):
@@ -73,8 +73,8 @@ def heuristic(schools: List, students: List, k: int):
         school.preview(students)
     for i in range(k):
         for school in schools:
-            l = school.students().copy()
+            student_list = school.students().copy()
             for student in students:
                 if school in student.preference_list() and student.prefer(school):
-                    l.append(student)
-            school.select(l)
+                    student_list.append(student)
+            school.select(student_list)
