@@ -39,11 +39,11 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
         # start = time.time()
         delta1 = delta2 = delta / (3 * i_max)
         # generate reverse reachable set
-        count = 0
-        while count < theta - len(R_1):
+        count = len(R_1)
+        while count < theta:
             v1, v2 = random.choices(nodes, weights=values, k=2)
-            generate_rr(graph, v1, R_1, count)
-            generate_rr(graph, v2, R_2, count)
+            generate_rr(graph, v1, R_1, index=count)
+            generate_rr(graph, v2, R_2, index=count)
             count += 1
         # print('time1:{}'.format(time.time() - start))
         if method == 'normal':
@@ -57,15 +57,15 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
         # upper bound of optimum
         sigma_u = math.pow(math.sqrt(f_u(C, Si, f, R_1, k) + math.log(1 / delta1) / 2)
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
+        # print(sigma_l, sigma_u)
         # print('time3:{}'.format(time.time() - start))
-        if sigma_l / sigma_u >= frac:
+        if sigma_l / sigma_u >= frac-epsilon:
             break
         theta *= 2
     return R_1
 
 
 def node_selection_sq(C, R, k):
-    random.shuffle(C)
     S = []
     A = []
     W = {}

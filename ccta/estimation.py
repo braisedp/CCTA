@@ -1,25 +1,25 @@
 import itertools
 
+from tqdm import tqdm
+
 from ccta.Task import Task
+from ccta.Worker import Worker
 from utils.funcs import max_k
 
 
-def outward_satisfactory(tasks: list[Task], workers, ise=False):
-    total_matched_pairs = 0
-    for task in tasks:
-        total_matched_pairs += len(task.students())
+def fairness_pairwise(tasks: list[Task], workers: list[Worker], ise=False):
     outward_unsatisfied_pairs = 0
-    for task in tasks:
-        for worker in workers:
-            if worker.prefer(task) and task.prefer([worker], ise):
-                outward_unsatisfied_pairs += 1
-    return 1 - outward_unsatisfied_pairs / total_matched_pairs
+    with tqdm(total=len(tasks)*len(workers), desc='estimate outward satisfactory', leave=True, ncols=100, unit='B',
+              unit_scale=True) as pbr:
+        for task in tasks:
+            for worker in workers:
+                if worker.prefer(task) and task.prefer([worker], ise):
+                    outward_unsatisfied_pairs += 1
+                pbr.update(1)
+    return 1 - outward_unsatisfied_pairs / len(tasks)/len(workers)
 
 
-def overall_satisfactory(tasks, workers, ise=False):
-    total_matched_pairs = 0
-    for task in tasks:
-        total_matched_pairs += len(task.students())
+def overall_satisfactory(tasks: list[Task], workers: list[Worker], ise=False):
     overall_unsatisfied_pairs = 0
     for task in tasks:
         P = []
@@ -34,21 +34,22 @@ def overall_satisfactory(tasks, workers, ise=False):
         k = max_k(task.budget, costs)
         for i in range(k):
             for new in itertools.combinations(P, i + 1):
-                if task.prefer(list(new), ise):
+                if task.prefer(list(new), ise) and task.have_vacancy_for(list(new)):
                     for worker in new:
                         if not visited[worker]:
                             overall_unsatisfied_pairs += 1
                             visited[worker] = True
-    return 1 - overall_unsatisfied_pairs / total_matched_pairs
+    return 1 - overall_unsatisfied_pairs / len(tasks)/len(workers)
 
 
 def waste_pairwise(tasks, workers):
     wasted_pairs = 0
-    total_matched_pairs = 0
-    for task in tasks:
-        total_matched_pairs += len(task.students())
     for task in tasks:
         for worker in workers:
             if worker.prefer(task) and task.have_vacancy_for([worker]):
                 wasted_pairs += 1
-    return wasted_pairs / total_matched_pairs
+    return wasted_pairs / len(tasks)/len(workers)
+
+
+
+

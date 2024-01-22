@@ -60,12 +60,16 @@ def IC_v(graph, seeds, values):
     return count
 
 
-def calculate_influence_quality(Sk, graph, values):
+def calculate_influence_quality(Sk, graph, values, times=500, multi=False):
     seeds = Sk
     worker_num = 10
-    worker = create_worker(graph, seeds, values, worker_num, int(1000 / worker_num))
     result = []
-    for w in worker:
-        result.append(w.outQ.get())
-    finish_worker(worker)
-    return sum(result) / 1000
+    if multi:
+        worker = create_worker(graph, seeds, values, worker_num, int(times / worker_num))
+        for w in worker:
+            result.append(w.outQ.get())
+        finish_worker(worker)
+    else:
+        for i in range(times):
+            result.append(IC_v(graph, seeds, values))
+    return sum(result) / times

@@ -74,12 +74,6 @@ class MChoice:
                     return [w_]
         return [worker]
 
-    def refresh(self, S):
-        self.S = S
-        self.A = []
-        self.W = {}
-        self.U = 0.0
-
 
 class BChoice:
     def __init__(self, S, HG, budget, costs: dict):
@@ -93,7 +87,12 @@ class BChoice:
         self.rest = budget  # budget left current
         self.budget = budget  # total budget
         self.costs = costs  # cost dict of all elements
-        self.r = 2.0
+        s_ = 0.0
+        for cost in costs.values():
+            if cost < budget:
+                if cost / budget > s_:
+                    s_ = cost / budget
+        self.r = 2.0 - s_
 
     def choose(self, worker):
         v = gamma_workers(self.HG, [worker] + self.A) - self.U  # v(u)
@@ -156,15 +155,6 @@ class BChoice:
         # if u is rejected, then worker and the saved element is rejected
         return [worker]
 
-    def refresh(self, S):
-        self.S = S
-        self.A = []
-        self.W = {}
-        self.save = None
-        self.save_frac = 1.0
-        self.U = 0.0
-        self.rest = self.budget
-
 
 class MaxCoverChoice:
     def __init__(self, S, HG, budget, costs):
@@ -192,88 +182,58 @@ class MaxCoverChoice:
             for node in self.HG.get_fr(worker.idx):
                 self.Z[worker][node] = 1.0 - self.z[node]
                 self.z[node] = 1.0
+            reject = []
             if self.save is None:
-                reject = []
                 ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True)
-                weight = 0.0
-                k = 0
-                while k < len(ordered_list):
+            else:
+                ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True) + [self.save]
+            weight = 0.0
+            k = 0
+            while k < len(ordered_list):
+                if k == len(ordered_list) - 1:
+                    weight += self.costs[ordered_list[k]] * self.save_frac
+                else:
                     weight += self.costs[ordered_list[k]]
-                    if weight >= self.budget:
-                        break
-                    k += 1
-                if weight <= self.budget:
-                    return reject
-                for w in ordered_list[k + 1:]:
+                if weight >= self.budget:
+                    break
+                k += 1
+            if weight <= self.budget:
+                return reject
+            for w in ordered_list[k + 1:]:
+                if w != self.save:
                     self.S.remove(w)
                     reject.append(w)
-                    for element in self.Z[w]:
-                        self.z[element] -= self.Z[w][element]
+                for element in self.Z[w]:
+                    self.z[element] -= self.Z[w][element]
+                self.Z.pop(w)
+            w = ordered_list[k]
+            if w == self.save:
+                x = self.save_frac - (weight - self.budget) / self.costs[w]
+                for element in self.Z[w]:
+                    self.z[element] = self.z[element] - (1.0 - x / self.save_frac) * self.Z[w][element]
+                    self.Z[w][element] *= x / self.save_frac
+                if x == 0.0:
                     self.Z.pop(w)
-                w = ordered_list[k]
-                if weight > self.budget:
-                    self.S.remove(w)
-                    reject.append(w)
-                    x = 1.0 - (weight - self.budget) / self.costs[w]
-                    for element in self.Z[w]:
-                        self.z[element] -= (1.0 - x) * self.Z[w][element]
-                        self.Z[w][element] = x * self.Z[w][element]
+                    self.save = None
+                    self.save_frac = 1.0
+                else:
+                    self.save_frac = x
+            else:
+                self.S.remove(w)
+                reject.append(w)
+                x = 1.0 - (weight - self.budget) / self.costs[w]
+                for element in self.Z[w]:
+                    self.z[element] = self.z[element] - (1.0 - x) * self.Z[w][element]
+                    self.Z[w][element] = x * self.Z[w][element]
+                if x == 0.0:
+                    self.Z.pop(w)
+                    self.save = None
+                    self.save_frac = 1.0
+                else:
                     self.save = w
                     self.save_frac = x
-                return reject
-
-            else:
-                reject = []
-                ordered_list = sorted(self.S, key=lambda e: self.Rhos[e], reverse=True) + [self.save]
-                weight = 0.0
-                k = 0
-                while k < len(ordered_list):
-                    if k == len(ordered_list) - 1:
-                        weight += self.costs[ordered_list[k]] * self.save_frac
-                    else:
-                        weight += self.costs[ordered_list[k]]
-                    if weight >= self.budget:
-                        break
-                    k += 1
-                for w in ordered_list[k + 1:]:
-                    if w in self.S:
-                        self.S.remove(w)
-                        reject.append(w)
-                    for element in self.Z[w]:
-                        self.z[element] -= self.Z[w][element]
-                    self.Z.pop(w)
-                w = ordered_list[k]
-                if weight > self.budget:
-                    if w == self.save:
-                        x = self.save_frac - (weight - self.budget) / self.costs[w]
-                        for element in self.Z[w]:
-                            self.z[element] = self.z[element] - (1.0 - x / self.save_frac) * self.Z[w][element]
-                            self.Z[w][element] *= x / self.save_frac
-                        if x == 0.0:
-                            self.Z.pop(w)
-                            self.save = None
-                            self.save_frac = 1.0
-                        else:
-                            self.save_frac = x
-                    else:
-                        self.S.remove(w)
-                        reject.append(w)
-                        x = 1.0 - (weight - self.budget) / self.costs[w]
-                        for element in self.Z[w]:
-                            self.z[element] = self.z[element] - (1.0 - x) * self.Z[w][element]
-                            self.Z[w][element] = x * self.Z[w][element]
-                        self.save = w
-                        self.save_frac = x
-                return reject
+            return reject
         return [worker]
-
-    def refresh(self, S):
-        self.S = S  # Solution
-        self.save = None  # saved item
-        self.save_frac = 1.0  # fraction of the saved item
-        self.z = [0.0] * len(self.HG)  # fraction of all elements
-        self.Z = {}  # fraction of all items on all elements
-        self.Rhos = {}  # density of all items
 
 
 class BSelect:
