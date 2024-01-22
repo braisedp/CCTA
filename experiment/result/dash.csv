@@ -1,1 +1,1 @@
-round,choice_function,task,worker,average_budget,pairwise_stability,average_density,maximum_density,min_density
+round,choice_function,task,worker,average-budget,fairness-pairwise,waste-pairwise,average-density,maximum-density,min-density

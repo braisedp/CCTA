@@ -1,9 +1,7 @@
-import itertools
 import math
 import random
 from utils.HyperGraph import HyperGraph
-from stable_matching.TaskWorker import BChoice, MChoice, MaxCoverChoice, gamma_workers
-from utils.funcs import Gamma
+from ccta.Task import BChoice, MaxCoverChoice, gamma_workers
 
 
 class Element:

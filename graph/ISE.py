@@ -42,27 +42,6 @@ def ise(graph, seeds, values):
     return IC_v(graph, seeds, values)
 
 
-def IC(graph, seeds):
-    """
-    implement independent cascade model
-    """
-    count = len(seeds)
-    activity_set = set(seeds)
-    active_nodes = set(seeds)
-    while activity_set:
-        new_activity_set = set()
-        for seed in activity_set:
-            for node in graph.neighbors(seed):
-                weight = graph[seed][node]['weight']
-                if node not in active_nodes:
-                    if random.random() < weight:
-                        active_nodes.add(node)
-                        new_activity_set.add(node)
-        count += len(new_activity_set)
-        activity_set = new_activity_set
-    return count
-
-
 def IC_v(graph, seeds, values):
     count = sum([values[seed] for seed in seeds])
     activity_set = set(seeds)
@@ -79,17 +58,6 @@ def IC_v(graph, seeds, values):
                         new_activity_set.add(node)
         activity_set = new_activity_set
     return count
-
-
-def calculate_influence(Sk, graph):
-    seeds = Sk
-    worker_num = 8
-    worker = create_worker(graph, seeds, worker_num, int(10000 / worker_num))
-    result = []
-    for w in worker:
-        result.append(w.outQ.get())
-    finish_worker(worker)
-    return sum(result) / 10000
 
 
 def calculate_influence_quality(Sk, graph, values):

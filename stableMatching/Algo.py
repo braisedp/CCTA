@@ -1,46 +1,9 @@
+import itertools
 import random
 from typing import List
 
-
-class School:
-    def choice(self, student):
-        pass
-
-    def select(self, students: List):
-        pass
-
-    def preview(self, students: List):
-        pass
-
-    def students(self) -> List:
-        pass
-
-
-class Student:
-
-    def preview(self, schools: List):
-        pass
-
-    def preference_list(self):
-        pass
-
-    def propose(self) -> School:
-        pass
-
-    def rejected_by(self, school):
-        pass
-
-    def chosen_by(self, school):
-        pass
-
-    def school(self):
-        pass
-
-    def matched(self) -> bool:
-        pass
-
-    def prefer(self, school) -> bool:
-        pass
+from stableMatching.Student import Student
+from utils.funcs import max_k
 
 
 def all_matched(students: List) -> bool:
@@ -78,3 +41,4 @@ def heuristic(schools: List, students: List, k: int):
                 if school in student.preference_list() and student.prefer(school):
                     student_list.append(student)
             school.select(student_list)
+
