@@ -1,3 +1,5 @@
+import pandas as pd
+
 from ccta.Task import individual_rationality_tasks, calculate_influence_workers
 from ccta.estimation import fairness_pairwise, waste_pairwise
 import math
@@ -12,7 +14,7 @@ def estimate(Tasks, Workers, ise=True):
             task_.estimate()
     result_dict = {'fairness-pairwise': fairness_pairwise(Tasks, Workers, ise),
                    # 'overall_satisfactory': overall_satisfactory(tasks,workers,ise),
-                   'individual-rationality': individual_rationality_tasks(Tasks),
+                   # 'individual-rationality': individual_rationality_tasks(Tasks),
                    'waste-pairwise': waste_pairwise(Tasks, Workers)}
     Sum = 0
     Max = 0
@@ -20,28 +22,31 @@ def estimate(Tasks, Workers, ise=True):
     for t_ in Tasks:
         if len(t_.students()) <= 0:
             break
-        q = calculate_influence_workers(t_.students(), t_.G, t_.values)/t_.budget
+        q = calculate_influence_workers(t_.students(), t_.G, t_.values) / t_.budget
         Sum += q
         if q > Max:
             Max = q
         if q < Min:
             Min = q
-    result_dict['average-density'] = Sum/len(Tasks)
-    result_dict['maximum-density'] = Max
-    result_dict['minimum-density'] = Min
+    result_dict['avg-density'] = Sum / len(Tasks)
+    result_dict['max-density'] = Max
+    result_dict['min-density'] = Min
     return result_dict
 
 
-graph_file = '../graphs/dash/dash.csv'
-m = 10  # number of tasks
+graph_name = 'dash'
+graph_file = '../graphs/{}/{}.csv'.format(graph_name, graph_name)
+result_file = './result/{}.csv'.format(graph_name)
+m = 20  # number of tasks
 n = 100  # number of candidate workers
-avg_budget = 10
-min_cost = 0.05*avg_budget
-max_cost = 0.95*avg_budget
-Round = 10
+avg_budget = 1.0
+ep = 0.05
+min_cost = ep
+max_cost = (1 - ep)
+Round = 5
 
 if __name__ == '__main__':
-    for ii in range(Round):
+    for epoch in range(Round):
         graph_file = '../graphs/dash/dash.csv'
         from ccta.Worker import Worker
 
@@ -55,9 +60,9 @@ if __name__ == '__main__':
         from utils.funcs import max_k
 
         # allocate budget to every task, sum of all budget is total_budget
-        max_variance = math.ceil(avg_budget / 2)
+        max_variance = avg_budget / 2
 
-        budgets = [random.randint(avg_budget - max_variance, avg_budget + max_variance) for _ in range(m)]
+        budgets = [random.uniform(avg_budget - max_variance, avg_budget + max_variance) for _ in range(m)]
         costs = {}
         values = {}
         Q = [0] * m
@@ -81,7 +86,8 @@ if __name__ == '__main__':
 
         tasks = []
         graph_ids = random.sample(range(100), m)
-        with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=100, unit='B', unit_scale=True) as pbar:
+        with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+            pbar.set_description('round:{},generate tasks'.format(epoch))
             for i in range(m):
                 start = time.time()
                 G = read_graph_from_csv(graph_file, graph_ids[i])
@@ -104,6 +110,8 @@ if __name__ == '__main__':
                 value_dict[t] = random.random()
             worker.set_preference(value_dict)
 
+        result = {}
+
         from stableMatching.Algo import generalized_da
 
         for worker in workers:
@@ -112,7 +120,7 @@ if __name__ == '__main__':
             task.refresh()
             task.set_choice_max_cover()
         generalized_da(tasks, workers)
-        estimate(tasks, workers)
+        result['max-cover'] = estimate(tasks, workers)
 
         for worker in workers:
             worker.refresh()
@@ -120,17 +128,18 @@ if __name__ == '__main__':
             task.refresh()
             task.set_choice_budget()
         generalized_da(tasks, workers)
-        estimate(tasks, workers)
+        result['budget'] = estimate(tasks, workers)
 
         for worker in workers:
             worker.refresh()
         for task in tasks:
             task.refresh()
-            task.set_choice_matroid(avg_budget)
+            task.set_choice_matroid(math.ceil(avg_budget))
         generalized_da(tasks, workers)
-        estimate(tasks, workers)
+        result['matroid'] = estimate(tasks, workers)
 
-        with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=100, unit='B', unit_scale=True) as pbar:
+        with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+            pbar.set_description('round:{},regenerate RR'.format(epoch))
             for i in range(m):
                 start = time.time()
                 # generate hyper graph of reverse reachable set in graph G
@@ -147,5 +156,19 @@ if __name__ == '__main__':
             worker.refresh()
         for task in tasks:
             task.refresh()
-        heuristic(tasks, workers, 100)
-        estimate(tasks, workers)
+        heuristic(tasks, workers, 3)
+        result['heuristic'] = estimate(tasks, workers)
+
+        df = pd.read_csv(result_file).reset_index(drop=True)
+        methods = ['max-cover', 'budget', 'matroid', 'heuristic']
+        for method in methods:
+            s = pd.Series([epoch, method, m, n, avg_budget, result[method]['fairness-pairwise'],
+                           result[method]['waste-pairwise'], result[method]['avg-density'],
+                           result[method]['max-density'], result[method]['min-density']],
+                          index=['round', 'method', 'task', 'worker', 'avg-budget', 'fairness-pairwise',
+                                 'waste-pairwise', 'avg-density', 'max-density', 'min-density'])
+            df.loc[len(df)] = s
+        df.reset_index(drop=True)
+        df.to_csv(result_file, index=False)
+
+        del tasks, workers, df

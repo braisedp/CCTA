@@ -62,10 +62,11 @@ def IC_v(graph, seeds, values):
 
 def calculate_influence_quality(Sk, graph, values, times=500, multi=False):
     seeds = Sk
-    worker_num = 10
+    worker_num = 4
     result = []
     if multi:
         worker = create_worker(graph, seeds, values, worker_num, int(times / worker_num))
+        # print([w.pid for w in worker])
         for w in worker:
             result.append(w.outQ.get())
         finish_worker(worker)

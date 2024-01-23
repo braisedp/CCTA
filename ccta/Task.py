@@ -335,10 +335,16 @@ class Task(School):
         cost = sum([self.costs[i] for i in new])
         if cost > self.budget:
             return False
-        k = max_k(cost, costs)
+        k = max_k(self.budget-cost, costs)
+        if not ise:
+            if gamma_workers(self.R, new) > gamma_workers(self.R, S):
+                return True
+        if ise:
+            if calculate_influence_workers(new, self.G, self.values) > self.v:
+                return True
         for i in range(k):
-            for R in itertools.combinations(S, i + 1):
-                A = list(set(S) - set(R))
+            for A in itertools.combinations(S, i + 1):
+                A = list(A)
                 if sum([costs[e] for e in A]) + cost <= self.budget:
                     if not ise:
                         if gamma_workers(self.R, A + new) > gamma_workers(self.R, S):

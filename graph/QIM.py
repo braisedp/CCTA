@@ -1,6 +1,7 @@
 import random
 import math
 import time
+import multiprocessing as mp
 
 from graph.graph import generate_rr
 from utils.funcs import Gamma, top_k, logcnk
@@ -19,6 +20,39 @@ def f_u(C, Si, f, R_1, k):
     return val
 
 
+class Process(mp.Process):
+    def __init__(self, graph, values, R1, R2, start_index, max_count):
+        super(Process, self).__init__(target=self.start)
+        self.graph = graph
+        self.values = values
+        self.R1 = R1
+        self.R2 = R2
+        self.start_index = start_index
+        self.max_count = max_count
+
+    def run(self):
+        count = 0
+        nodes = list(self.graph.nodes)
+        while count < self.max_count:
+            v1, v2 = random.choices(nodes, weights=self.values, k=2)
+            generate_rr(self.graph, v1, self.R1, index=count + self.start_index)
+            generate_rr(self.graph, v2, self.R2, index=count + self.start_index)
+            count += 1
+
+
+def create_process(graph, values, R1, R2, start_index, count, num):
+    process = []
+    for i in range(num):
+        process.append(Process(graph, values, R1, R2, start_index + i * math.ceil(count / num), math.ceil(count / num)))
+        process[i].start()
+    return process
+
+
+def finish_process(process):
+    for p in process:
+        p.terminate()
+
+
 def sampling(graph, C, k, delta, epsilon, values, method='normal'):
     nodes = list(graph.nodes)
     R_1 = HyperGraph()
@@ -26,9 +60,9 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
     n = len(C)
     Q = sum(values)
     if method == 'normal':
-        frac = 1.0 - 1.0/math.e
+        frac = 1.0 - 1.0 / math.e
     else:
-        frac = 1/4
+        frac = 1 / 4
     # ceil(log_2(theta_max/theta_0))
     i_max = math.ceil(math.log2(Q / (sum([values[e] for e in top_k(C, values, k)]) * math.pow(epsilon, 2))))
     # print('i_max:{}'.format(i_max))
@@ -40,6 +74,11 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
         delta1 = delta2 = delta / (3 * i_max)
         # generate reverse reachable set
         count = len(R_1)
+        # processes = create_process(graph, values, R_1, R_2, count, theta - count, 8)
+        # for p in processes:
+        #     print(p.pid)
+        # for p in processes:
+        #     p.join()
         while count < theta:
             v1, v2 = random.choices(nodes, weights=values, k=2)
             generate_rr(graph, v1, R_1, index=count)
@@ -59,7 +98,7 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
         # print(sigma_l, sigma_u)
         # print('time3:{}'.format(time.time() - start))
-        if sigma_l / sigma_u >= frac-epsilon:
+        if sigma_l / sigma_u >= frac - epsilon:
             break
         theta *= 2
     return R_1
@@ -93,10 +132,10 @@ def node_selection_normal(C, R, k):
     U = 0.0
     N = C.copy()
     for _ in range(k):
-        n = max(N, key=lambda x: Gamma(R, S+[x]) - U)
+        n = max(N, key=lambda x: Gamma(R, S + [x]) - U)
         N.remove(n)
         S.append(n)
-        U = Gamma(R, S+[n])
+        U = Gamma(R, S + [n])
     return S, U
 
 

@@ -2,10 +2,10 @@ from stableMatching.Student import Student
 
 
 class Worker(Student):
-    def __init__(self, idx):
+    def __init__(self, idx: int):
         self.task = None
-        self.preference = None
-        self.propose_list = None
+        self.preference = list()
+        self.propose_list = list()
         self.idx = idx
 
     def refresh(self):
@@ -50,7 +50,7 @@ class Worker(Student):
         return False
 
     def prefer(self, task) -> bool:
-        if task is None:
+        if task is None or task not in self.preference:
             return False
         if self.task is None:
             return True
