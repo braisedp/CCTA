@@ -265,6 +265,7 @@ class Task(School):
         self.R = R
         self.Q = Q
         self.G = None
+        self.es_RR = None
         self.values = None
         self. v = 0.0
 
@@ -337,7 +338,7 @@ class Task(School):
             return False
         k = max_k(self.budget-cost, costs)
         if not ise:
-            if gamma_workers(self.R, new) > gamma_workers(self.R, S):
+            if gamma_workers(self.es_RR, new) > gamma_workers(self.es_RR, S):
                 return True
         if ise:
             if calculate_influence_workers(new, self.G, self.values) > self.v:
@@ -347,7 +348,7 @@ class Task(School):
                 A = list(A)
                 if sum([costs[e] for e in A]) + cost <= self.budget:
                     if not ise:
-                        if gamma_workers(self.R, A + new) > gamma_workers(self.R, S):
+                        if gamma_workers(self.es_RR, A + new) > gamma_workers(self.es_RR, S):
                             return True
                     if ise:
                         if calculate_influence_workers(A + new, self.G, self.values) > self.v:
@@ -368,3 +369,6 @@ class Task(School):
 
     def __str__(self):
         return str(self.idx)
+
+    def set_estimation_rr(self, RR):
+        self.es_RR = RR

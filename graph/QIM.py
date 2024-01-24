@@ -85,10 +85,7 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
             generate_rr(graph, v2, R_2, index=count)
             count += 1
         # print('time1:{}'.format(time.time() - start))
-        if method == 'normal':
-            Si, f = node_selection_normal(C, R_1, k)
-        else:
-            Si, f = node_selection_sq(C, R_1, k)
+        Si, f = node_selection_normal(C, R_1, k)
         # print('time2:{}'.format(time.time() - start))
         # lower bound of node selection
         sigma_l = math.pow(math.sqrt(Gamma(R_2, Si) + 2 * math.log(1 / delta2) / 9)
@@ -98,10 +95,21 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
         # print(sigma_l, sigma_u)
         # print('time3:{}'.format(time.time() - start))
-        if sigma_l / sigma_u >= frac - epsilon:
+        if sigma_l / sigma_u >= 1 - 1/math.e - epsilon:
             break
         theta *= 2
     return R_1
+
+
+def generate_estimation(graph, values, count):
+    nodes = list(graph.nodes)
+    R = HyperGraph()
+    num = 0
+    while num < count:
+        v = random.choices(nodes, weights=values, k=1)[0]
+        generate_rr(graph, v, R, index=num)
+        num += 1
+    return R
 
 
 def node_selection_sq(C, R, k):

@@ -8,7 +8,7 @@ import time
 from graph.graph import read_graph_from_csv
 
 
-def estimate(Tasks, Workers, ise=True):
+def estimate(Tasks, Workers, ise=False):
     if ise:
         for task_ in Tasks:
             task_.estimate()
@@ -37,16 +37,16 @@ def estimate(Tasks, Workers, ise=True):
 graph_name = 'dash'
 graph_file = '../graphs/{}/{}.csv'.format(graph_name, graph_name)
 result_file = './result/{}.csv'.format(graph_name)
-m = 20  # number of tasks
-n = 100  # number of candidate workers
-avg_budget = 1.0
+m = 5  # number of tasks
+n = 50  # number of candidate workers
+avg_budget = 5.0
 ep = 0.05
 min_cost = ep
 max_cost = (1 - ep)
-Round = 5
+Round = [0, 1, 2, 3, 4]
 
 if __name__ == '__main__':
-    for epoch in range(Round):
+    for epoch in Round:
         graph_file = '../graphs/dash/dash.csv'
         from ccta.Worker import Worker
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
         for i in range(n):
             workers.append(Worker(idx=worker_ids[i]))
         del g
-        from graph.QIM import sampling
+        from graph.QIM import sampling, generate_estimation
         from utils.funcs import max_k
 
         # allocate budget to every task, sum of all budget is total_budget
@@ -94,14 +94,22 @@ if __name__ == '__main__':
                 budget = budgets[i]
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(budget, costs[i])
-                RR = sampling(graph=G, C=worker_ids, k=k, delta=1 / math.pow(n, 2), epsilon=0.001, values=values[i],
-                              method='sq')
+                RR = sampling(graph=G, C=worker_ids, k=k, delta=1/100, epsilon=0.01, values=values[i],
+                              method='normal')
                 pbar.set_postfix({'task': i, 'time used': time.time() - start, 'RR size': len(RR)})
 
                 # initialize tasks
                 tasks.append(Task(idx=i, budget=budget, R=RR, Q=Q[i]))
                 tasks[i].initialize(costs[i])
                 tasks[i].set_graph(G, values[i])
+                pbar.update(100)
+
+        with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+            pbar.set_description('round:{},generate estimation'.format(epoch))
+            for i in range(m):
+                RR = generate_estimation(graph=tasks[i].G, values=values[i], count=100000)
+                tasks[i].set_estimation_rr(RR)
+                pbar.set_postfix({'task': i})
                 pbar.update(100)
 
         for worker in workers:
@@ -138,17 +146,17 @@ if __name__ == '__main__':
         generalized_da(tasks, workers)
         result['matroid'] = estimate(tasks, workers)
 
-        with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
-            pbar.set_description('round:{},regenerate RR'.format(epoch))
-            for i in range(m):
-                start = time.time()
-                # generate hyper graph of reverse reachable set in graph G
-                k = max_k(tasks[i].budget, costs[i])
-                RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / n, epsilon=0.1, values=values[i],
-                              method='normal')
-                tasks[i].R = RR
-                pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
-                pbar.update(100)
+        # with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+        #     pbar.set_description('round:{},regenerate RR'.format(epoch))
+        #     for i in range(m):
+        #         start = time.time()
+        #         # generate hyper graph of reverse reachable set in graph G
+        #         k = max_k(tasks[i].budget, costs[i])
+        #         RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / n, epsilon=0.1, values=values[i],
+        #                       method='normal')
+        #         tasks[i].R = RR
+        #         pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
+        #         pbar.update(100)
 
         from stableMatching.Algo import heuristic
 
