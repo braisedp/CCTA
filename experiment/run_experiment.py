@@ -37,13 +37,13 @@ def estimate(Tasks, Workers, ise=False):
 graph_name = 'dash'
 graph_file = '../graphs/{}/{}.csv'.format(graph_name, graph_name)
 result_file = './result/{}.csv'.format(graph_name)
-m = 5  # number of tasks
-n = 50  # number of candidate workers
-avg_budget = 5.0
+m = 10  # number of tasks
+n = 600  # number of candidate workers
+avg_budget = 1.0
 ep = 0.05
 min_cost = ep
 max_cost = (1 - ep)
-Round = [0, 1, 2, 3, 4]
+Round = range(5)
 
 if __name__ == '__main__':
     for epoch in Round:
@@ -122,27 +122,27 @@ if __name__ == '__main__':
 
         from stableMatching.Algo import generalized_da
 
-        for worker in workers:
-            worker.refresh()
-        for task in tasks:
-            task.refresh()
-            task.set_choice_max_cover()
-        generalized_da(tasks, workers)
-        result['max-cover'] = estimate(tasks, workers)
+        # for worker in workers:
+        #     worker.refresh()
+        # for task in tasks:
+        #     task.refresh()
+        #     task.set_choice_max_cover()
+        # generalized_da(tasks, workers)
+        # result['max-cover'] = estimate(tasks, workers)
+        #
+        # for worker in workers:
+        #     worker.refresh()
+        # for task in tasks:
+        #     task.refresh()
+        #     task.set_choice_budget()
+        # generalized_da(tasks, workers)
+        # result['budget'] = estimate(tasks, workers)
 
         for worker in workers:
             worker.refresh()
         for task in tasks:
             task.refresh()
-            task.set_choice_budget()
-        generalized_da(tasks, workers)
-        result['budget'] = estimate(tasks, workers)
-
-        for worker in workers:
-            worker.refresh()
-        for task in tasks:
-            task.refresh()
-            task.set_choice_matroid(math.ceil(avg_budget))
+            task.set_choice_matroid(math.ceil(10*avg_budget))
         generalized_da(tasks, workers)
         result['matroid'] = estimate(tasks, workers)
 
@@ -158,17 +158,18 @@ if __name__ == '__main__':
         #         pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
         #         pbar.update(100)
 
-        from stableMatching.Algo import heuristic
-
-        for worker in workers:
-            worker.refresh()
-        for task in tasks:
-            task.refresh()
-        heuristic(tasks, workers, 3)
-        result['heuristic'] = estimate(tasks, workers)
+        # from stableMatching.Algo import heuristic
+        #
+        # for worker in workers:
+        #     worker.refresh()
+        # for task in tasks:
+        #     task.refresh()
+        # heuristic(tasks, workers, 5)
+        # result['heuristic'] = estimate(tasks, workers)
 
         df = pd.read_csv(result_file).reset_index(drop=True)
-        methods = ['max-cover', 'budget', 'matroid', 'heuristic']
+        # methods = ['max-cover', 'budget', 'matroid', 'heuristic']
+        methods = ['matroid']
         for method in methods:
             s = pd.Series([epoch, method, m, n, avg_budget, result[method]['fairness-pairwise'],
                            result[method]['waste-pairwise'], result[method]['avg-density'],

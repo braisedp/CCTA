@@ -111,7 +111,7 @@ def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, undirected=True):
                 f.write("%d %d %s\n" % (e[1], e[0], X[i]))
 
 
-def wrt_prb_tasks(i_flnm, o_flnm, n, mu=0.09, sigma=0.06, directed=False):
+def wrt_prb_tasks(i_flnm, o_flnm, n, mu=0.1, sigma=0.05, directed=False):
     G = read_graph(i_flnm)
     m = len(G.edges())
     print(m)
