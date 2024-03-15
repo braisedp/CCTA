@@ -40,13 +40,13 @@ result_file = './result/{}.csv'.format(graph_name)
 m = 10  # number of tasks
 n = 600  # number of candidate workers
 avg_budget = 1.0
-ep = 0.05
-min_cost = ep
-max_cost = (1 - ep)
-Round = range(5)
+epsilon = 0.05
+min_cost = epsilon
+max_cost = (1 - epsilon)
+epochs = range(5)
 
 if __name__ == '__main__':
-    for epoch in Round:
+    for epoch in epochs:
         graph_file = '../graphs/dash/dash.csv'
         from ccta.Worker import Worker
 
@@ -94,8 +94,8 @@ if __name__ == '__main__':
                 budget = budgets[i]
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(budget, costs[i])
-                RR = sampling(graph=G, C=worker_ids, k=k, delta=1/100, epsilon=0.01, values=values[i],
-                              method='normal')
+                RR = sampling(graph=G, C=worker_ids, k=k, delta=1/n, epsilon=0.01, values=values[i],
+                              method='modified')
                 pbar.set_postfix({'task': i, 'time used': time.time() - start, 'RR size': len(RR)})
 
                 # initialize tasks
@@ -122,54 +122,54 @@ if __name__ == '__main__':
 
         from stableMatching.Algo import generalized_da
 
-        # for worker in workers:
-        #     worker.refresh()
-        # for task in tasks:
-        #     task.refresh()
-        #     task.set_choice_max_cover()
-        # generalized_da(tasks, workers)
-        # result['max-cover'] = estimate(tasks, workers)
-        #
-        # for worker in workers:
-        #     worker.refresh()
-        # for task in tasks:
-        #     task.refresh()
-        #     task.set_choice_budget()
-        # generalized_da(tasks, workers)
-        # result['budget'] = estimate(tasks, workers)
+        for worker in workers:
+            worker.refresh()
+        for task in tasks:
+            task.refresh()
+            task.set_choice_max_cover()
+        generalized_da(tasks, workers)
+        result['max-cover'] = estimate(tasks, workers)
 
         for worker in workers:
             worker.refresh()
         for task in tasks:
             task.refresh()
-            task.set_choice_matroid(math.ceil(10*avg_budget))
+            task.set_choice_budget()
         generalized_da(tasks, workers)
-        result['matroid'] = estimate(tasks, workers)
+        result['budget'] = estimate(tasks, workers)
 
-        # with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
-        #     pbar.set_description('round:{},regenerate RR'.format(epoch))
-        #     for i in range(m):
-        #         start = time.time()
-        #         # generate hyper graph of reverse reachable set in graph G
-        #         k = max_k(tasks[i].budget, costs[i])
-        #         RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / n, epsilon=0.1, values=values[i],
-        #                       method='normal')
-        #         tasks[i].R = RR
-        #         pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
-        #         pbar.update(100)
-
-        # from stableMatching.Algo import heuristic
-        #
         # for worker in workers:
         #     worker.refresh()
         # for task in tasks:
         #     task.refresh()
-        # heuristic(tasks, workers, 5)
-        # result['heuristic'] = estimate(tasks, workers)
+        #     task.set_choice_matroid(math.ceil(10*avg_budget))
+        # generalized_da(tasks, workers)
+        # result['matroid'] = estimate(tasks, workers)
+
+        with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+            pbar.set_description('round:{},regenerate RR'.format(epoch))
+            for i in range(m):
+                start = time.time()
+                # generate hyper graph of reverse reachable set in graph G
+                k = max_k(tasks[i].budget, costs[i])
+                RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / n, epsilon=0.1, values=values[i],
+                              method='normal')
+                tasks[i].R = RR
+                pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
+                pbar.update(100)
+
+        from stableMatching.Algo import heuristic
+
+        for worker in workers:
+            worker.refresh()
+        for task in tasks:
+            task.refresh()
+        heuristic(tasks, workers, 5)
+        result['heuristic'] = estimate(tasks, workers)
 
         df = pd.read_csv(result_file).reset_index(drop=True)
-        # methods = ['max-cover', 'budget', 'matroid', 'heuristic']
-        methods = ['matroid']
+        methods = ['max-cover', 'budget', 'heuristic']
+        # methods = ['matroid']
         for method in methods:
             s = pd.Series([epoch, method, m, n, avg_budget, result[method]['fairness-pairwise'],
                            result[method]['waste-pairwise'], result[method]['avg-density'],
