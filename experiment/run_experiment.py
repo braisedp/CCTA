@@ -1,8 +1,8 @@
 import pandas as pd
 
 from ccta.Task import individual_rationality_tasks, calculate_influence_workers
+from ccta.Worker import Worker
 from ccta.estimation import fairness_pairwise, waste_pairwise
-import math
 import random
 import time
 from graph.graph import read_graph_from_csv
@@ -14,7 +14,7 @@ def estimate(Tasks, Workers, ise=False):
             task_.estimate()
     result_dict = {'fairness-pairwise': fairness_pairwise(Tasks, Workers, ise),
                    # 'overall_satisfactory': overall_satisfactory(tasks,workers,ise),
-                   # 'individual-rationality': individual_rationality_tasks(Tasks),
+                   'individual-rationality': individual_rationality_tasks(Tasks),
                    'waste-pairwise': waste_pairwise(Tasks, Workers)}
     Sum = 0
     Max = 0
@@ -35,20 +35,17 @@ def estimate(Tasks, Workers, ise=False):
 
 
 graph_name = 'dash'
-graph_file = '../graphs/{}/{}.csv'.format(graph_name, graph_name)
-result_file = './result/{}.csv'.format(graph_name)
+graph_file = '../graphs/{}.csv'.format(graph_name)
+result_file = './result/{}_result.csv'.format(graph_name)
 m = 10  # number of tasks
-n = 600  # number of candidate workers
+n = 200  # number of candidate workers
 avg_budget = 1.0
-epsilon = 0.05
-min_cost = epsilon
-max_cost = (1 - epsilon)
+min_cost = 0.01
+max_cost = 0.5
 epochs = range(5)
 
 if __name__ == '__main__':
     for epoch in epochs:
-        graph_file = '../graphs/dash/dash.csv'
-        from ccta.Worker import Worker
 
         g = read_graph_from_csv(graph_file, 0)
         workers = []
@@ -60,9 +57,8 @@ if __name__ == '__main__':
         from utils.funcs import max_k
 
         # allocate budget to every task, sum of all budget is total_budget
-        max_variance = avg_budget / 2
 
-        budgets = [random.uniform(avg_budget - max_variance, avg_budget + max_variance) for _ in range(m)]
+        budgets = [avg_budget for _ in range(m)]
         costs = {}
         values = {}
         Q = [0] * m
@@ -90,11 +86,11 @@ if __name__ == '__main__':
             pbar.set_description('round:{},generate tasks'.format(epoch))
             for i in range(m):
                 start = time.time()
-                G = read_graph_from_csv(graph_file, graph_ids[i])
+                G = read_graph_from_csv(graph_file, graph_ids[i], directed=True)
                 budget = budgets[i]
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(budget, costs[i])
-                RR = sampling(graph=G, C=worker_ids, k=k, delta=1/n, epsilon=0.01, values=values[i],
+                RR = sampling(graph=G, C=worker_ids, k=k, delta=1 / m, epsilon=0.1, values=values[i],
                               method='modified')
                 pbar.set_postfix({'task': i, 'time used': time.time() - start, 'RR size': len(RR)})
 
@@ -107,7 +103,7 @@ if __name__ == '__main__':
         with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
             pbar.set_description('round:{},generate estimation'.format(epoch))
             for i in range(m):
-                RR = generate_estimation(graph=tasks[i].G, values=values[i], count=100000)
+                RR = generate_estimation(graph=tasks[i].G, values=values[i], count=200000)
                 tasks[i].set_estimation_rr(RR)
                 pbar.set_postfix({'task': i})
                 pbar.update(100)
@@ -152,7 +148,7 @@ if __name__ == '__main__':
                 start = time.time()
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(tasks[i].budget, costs[i])
-                RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / n, epsilon=0.1, values=values[i],
+                RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / m, epsilon=0.1, values=values[i],
                               method='normal')
                 tasks[i].R = RR
                 pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})

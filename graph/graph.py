@@ -112,7 +112,7 @@ def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, undirected=True):
 
 
 def wrt_prb_tasks(i_flnm, o_flnm, n, mu=0.1, sigma=0.05, directed=False):
-    G = read_graph(i_flnm)
+    G = read_graph(i_flnm, directed)
     m = len(G.edges())
     print(m)
     o_nodes = [e[0] for e in G.edges]
@@ -142,8 +142,8 @@ def generate_rr_ic(graph, node, HG: HyperGraph, index):
     while activity_set:
         new_activity_set = list()
         for seed in activity_set:
-            for v in graph.neighbors(seed):
-                weight = graph[seed][v]['weight']
+            for v in graph.predecessors(seed):
+                weight = graph[v][seed]['weight']
                 if v not in activity_nodes:
                     if random.random() < weight:
                         HG.add_fr(v, index)

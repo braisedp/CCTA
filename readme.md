@@ -1,13 +1,11 @@
-## Social-Network Assisted Stable Task Assignment for Collective Computing
+## Stable Task Assignment for Social-Network-Assisted Collective Computing
 
 - This project is a realization of Social-Network Assisted Stable Task Assignment for Collective Computing.
 - The main idea of this method is based on influence maximization and stable matching.
 
 ### Estimation of influence of worker set
 
-For every task, the choice function runs an online algorithm with approximate ratio $\alpha$
-
-We combine the method of OPIM-C and budgeted influence maximization
+We combine the method of OPIM-C and budgeted influence maximization to give a estimation of the influence
 
 ### Stable Matching & Task assignment
 

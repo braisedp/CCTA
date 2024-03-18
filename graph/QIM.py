@@ -58,12 +58,11 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
     R_1 = HyperGraph()
     R_2 = HyperGraph()
     n = len(C)
-    Q = sum(values)
+    Q = sum(values.values())
     if method == 'normal':
-        frac = 1.0 - 1.0 / math.e
+        frac = 1.0 - 1.0 / math.sqrt(math.e)
     else:
         frac = 1 / 4
-    # ceil(log_2(theta_max/theta_0))
     i_max = math.ceil(math.log2(Q / (sum([values[e] for e in top_k(C, values, k)]) * math.pow(epsilon, 2))))
     # print('i_max:{}'.format(i_max))
     # theta_0
@@ -95,7 +94,7 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
         # print(sigma_l, sigma_u)
         # print('time3:{}'.format(time.time() - start))
-        if sigma_l / sigma_u >= 1 - 1/math.e - epsilon:
+        if sigma_l / sigma_u >= 1 - 1 / math.e - epsilon:
             break
         theta *= 2
     return R_1
