@@ -101,23 +101,17 @@ def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, undirected=True):
                 f.write("%d %d %s\n" % (e[1], e[0], X[i]))
 
 
-def wrt_prb_tasks(i_flnm, o_flnm, n, mu=0.1, sigma=0.05, directed=False):
-    G = read_graph(i_flnm, directed)
-    m = len(G.edges())
-    print(m)
-    o_nodes = [e[0] for e in G.edges]
-    i_nodes = [e[1] for e in G.edges]
-    if not directed:
-        o_nodes += [e[1] for e in G.edges]
-        i_nodes += [e[0] for e in G.edges]
-    df = pd.DataFrame({'from': o_nodes, 'to': i_nodes})
+def wrt_prb_tasks(i_flnm, o_flnm, n, start=0, mu=0.1, sigma=0.05, directed=False):
+    G = read_graph_from_csv(i_flnm, directed=True)
+    m = len(G.es())
+    df = pd.read_csv(o_flnm)
+    cols = {}
     for i in range(n):
         prb = np.array(gen_prb(m, mu=mu, sigma=sigma))
-        if not directed:
-            prb = np.tile(prb, 2)
-        df.insert(loc=2 + i, column='{}'.format(i), value=prb)
-    print(len(df))
-    df.to_csv(o_flnm)
+        cols['{}'.format(i+start)] = prb
+    new_df = pd.DataFrame(cols)
+    df = pd.concat([df, new_df], axis=1)
+    df.to_csv(o_flnm, index=False)
 
 
 def generate_rr(graph, v, HG: HyperGraph, index):

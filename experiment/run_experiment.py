@@ -43,7 +43,7 @@ def estimate(Tasks, Workers, ise=False):
 graph_name = 'dash'
 graph_file = '../graphs/{}.csv'.format(graph_name)
 result_file = './result/{}_result.csv'.format(graph_name)
-m = 80  # number of tasks
+m = 160  # number of tasks
 n = 1200  # number of candidate workers
 avg_budget = 1.0
 min_cost = 0.1
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         from tqdm import tqdm
 
         tasks = []
-        graph_ids = random.sample(range(100), m)
+        graph_ids = random.sample(range(200), m)
         with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
             pbar.set_description('round:{},generate tasks'.format(epoch))
             for i in range(m):
