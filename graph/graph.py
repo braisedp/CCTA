@@ -1,5 +1,6 @@
 import random
 import networkx as nx
+import igraph as ig
 from utils.HyperGraph import HyperGraph
 import pandas as pd
 import numpy as np
@@ -49,48 +50,37 @@ def read_graph_without_weights(filename, directed=False):
     return G
 
 
-def read_graph_from_csv(filename, task, directed=False):
-    if not directed:
-        G = nx.Graph()
-    else:
-        G = nx.DiGraph()
+# def read_graph_from_csv(filename, task, directed=False):
+#     if not directed:
+#         G = nx.Graph()
+#     else:
+#         G = nx.DiGraph()
+#     df = pd.read_csv(filename)
+#     for i in range(len(df)):
+#         data = df.iloc[i, [1, 2, task + 3]]
+#         G.add_edge(int(data.iloc[0]), int(data.iloc[1]), weight=float(data.iloc[2]))
+#     return G
+
+def read_graph_from_csv(filename, wcol=-1, directed=False):
     df = pd.read_csv(filename)
-    for i in range(len(df)):
-        data = df.iloc[i, [1, 2, task + 3]]
-        G.add_edge(int(data.iloc[0]), int(data.iloc[1]), weight=float(data.iloc[2]))
-    return G
 
+    # 提取边和权重
+    edges = list(zip(df['from'], df['to']))
 
-def convert_undirected_to_directed(G):
-    assert G.isinstance(type(nx.Graph()))
-    # check if there are weights on edges
-    e1, e2 = G.edges()[0]
-    if "weight" in G[e1][e2]:
-        weighted = True
-    else:
-        weighted = False
-    directed_G = nx.DiGraph()
-    if weighted:
-        for e in G.edges():
-            directed_G.add_weighted_edges_from(
-                [(e[0], e[1], G[e[0]][e[1]]["weight"]), (e[1], e[0], G[e[1]][e[0]]["weight"])])
-    else:
-        for e in G.edges():
-            directed_G.add_edges_from([(e[0], e[1]), (e[1], e[0])])
-    return directed_G
+    # 创建有向图
+    graph = ig.Graph(directed)
 
+    nodes = set(sum(edges, ()))
 
-def read_adjacency_list(filename, directed=False):
-    if not directed:
-        G = nx.Graph()
-    else:
-        G = nx.DiGraph()
-    with open(filename) as f:
-        for node, line in enumerate(f):
-            neighbors = map(int, line.split())
-            G.add_node(node)
-            G.add_edges_from([(node, v) for v in neighbors])
-    return G
+    # 添加节点和边
+    graph.add_vertices(len(nodes))  # 添加所有节点
+    graph.add_edges(edges)  # 添加边
+
+    if wcol >= 0:
+        weights = df['{}'.format(wcol)].tolist()
+        graph.es['weight'] = weights
+
+    return graph
 
 
 def gen_prb(n, mu, sigma, lower=0, upper=1):
@@ -143,7 +133,7 @@ def generate_rr_ic(graph, node, HG: HyperGraph, index):
         new_activity_set = list()
         for seed in activity_set:
             for v in graph.predecessors(seed):
-                weight = graph[v][seed]['weight']
+                weight = graph.es[graph.get_eid(v, seed)]['weight']
                 if v not in activity_nodes:
                     if random.random() < weight:
                         HG.add_fr(v, index)

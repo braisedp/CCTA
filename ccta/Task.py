@@ -246,7 +246,10 @@ class BSelect:
         while self.constraint.satisfy(S) and len(workers) > 0:
             V = {}
             for worker in workers:
-                V[worker] = gamma_workers(self.R, S+[worker])
+                if self.constraint.satisfy(S+[worker]):
+                    V[worker] = gamma_workers(self.R, S+[worker])
+                else:
+                    V[worker] = 0
             v_e = max(workers, key=lambda x: V[x])
             if self.constraint.satisfy(S + [v_e]):
                 S.append(v_e)
@@ -322,6 +325,7 @@ class Task(School):
 
     def refresh(self):
         self.S = []
+        self.v = 0
 
     def estimate(self):
         self.v = calculate_influence_workers(self.S, self.G, self.values)

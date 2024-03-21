@@ -50,7 +50,7 @@ def IC_v(graph, seeds, values):
         new_activity_set = set()
         for seed in activity_set:
             for node in graph.neighbors(seed):
-                weight = graph[seed][node]['weight']
+                weight = graph.es[graph.get_eid(seed, node)]['weight']
                 if node not in active_nodes:
                     if random.random() < weight:
                         active_nodes.add(node)

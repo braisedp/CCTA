@@ -1,7 +1,5 @@
 import random
 import math
-import time
-import multiprocessing as mp
 
 from graph.graph import generate_rr
 from utils.funcs import Gamma, top_k, logcnk
@@ -20,41 +18,8 @@ def f_u(C, Si, f, R_1, k):
     return val
 
 
-class Process(mp.Process):
-    def __init__(self, graph, values, R1, R2, start_index, max_count):
-        super(Process, self).__init__(target=self.start)
-        self.graph = graph
-        self.values = values
-        self.R1 = R1
-        self.R2 = R2
-        self.start_index = start_index
-        self.max_count = max_count
-
-    def run(self):
-        count = 0
-        nodes = list(self.graph.nodes)
-        while count < self.max_count:
-            v1, v2 = random.choices(nodes, weights=self.values, k=2)
-            generate_rr(self.graph, v1, self.R1, index=count + self.start_index)
-            generate_rr(self.graph, v2, self.R2, index=count + self.start_index)
-            count += 1
-
-
-def create_process(graph, values, R1, R2, start_index, count, num):
-    process = []
-    for i in range(num):
-        process.append(Process(graph, values, R1, R2, start_index + i * math.ceil(count / num), math.ceil(count / num)))
-        process[i].start()
-    return process
-
-
-def finish_process(process):
-    for p in process:
-        p.terminate()
-
-
 def sampling(graph, C, k, delta, epsilon, values, method='normal'):
-    nodes = list(graph.nodes)
+    nodes = range(graph.vcount())
     R_1 = HyperGraph()
     R_2 = HyperGraph()
     n = len(C)
@@ -68,6 +33,10 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
     # theta_0
     theta = 2 * math.pow(frac * math.sqrt(math.log(6 / delta)) + math.sqrt(frac * logcnk(n, k) + math.log(6 / delta)),
                          2)
+
+    # print('Q:{},OPT:{},theta_max:{}'.format(Q, sum([values[e] for e in top_k(C, values, k)]),
+    #                                         theta * math.pow(2, i_max)))
+
     for i in range(1, i_max):
         # start = time.time()
         delta1 = delta2 = delta / (3 * i_max)
@@ -92,7 +61,6 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
         # upper bound of optimum
         sigma_u = math.pow(math.sqrt(f_u(C, Si, f, R_1, k) + math.log(1 / delta1) / 2)
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
-        # print(sigma_l, sigma_u)
         # print('time3:{}'.format(time.time() - start))
         if sigma_l / sigma_u >= 1 - 1 / math.e - epsilon:
             break
@@ -101,7 +69,7 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
 
 
 def generate_estimation(graph, values, count):
-    nodes = list(graph.nodes)
+    nodes = range(graph.vcount())
     R = HyperGraph()
     num = 0
     while num < count:

@@ -1,8 +1,10 @@
+import math
+
 import pandas as pd
 
-from ccta.Task import individual_rationality_tasks, calculate_influence_workers
+from ccta.Task import individual_rationality_tasks, calculate_influence_workers, gamma_workers
 from ccta.Worker import Worker
-from ccta.estimation import fairness_pairwise, waste_pairwise
+from ccta.estimation import fairness_pairwise, waste_pairwise, overall_satisfactory
 import random
 import time
 from graph.graph import read_graph_from_csv
@@ -15,14 +17,18 @@ def estimate(Tasks, Workers, ise=False):
     result_dict = {'fairness-pairwise': fairness_pairwise(Tasks, Workers, ise),
                    # 'overall_satisfactory': overall_satisfactory(tasks,workers,ise),
                    'individual-rationality': individual_rationality_tasks(Tasks),
-                   'waste-pairwise': waste_pairwise(Tasks, Workers)}
+                   # 'waste-pairwise': waste_pairwise(Tasks, Workers)
+                   }
     Sum = 0
     Max = 0
     Min = 1000000
     for t_ in Tasks:
         if len(t_.students()) <= 0:
             break
-        q = calculate_influence_workers(t_.students(), t_.G, t_.values) / t_.budget
+        if ise:
+            q = calculate_influence_workers(t_.students(), t_.G, t_.values) / t_.budget
+        else:
+            q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
         Sum += q
         if q > Max:
             Max = q
@@ -37,22 +43,23 @@ def estimate(Tasks, Workers, ise=False):
 graph_name = 'dash'
 graph_file = '../graphs/{}.csv'.format(graph_name)
 result_file = './result/{}_result.csv'.format(graph_name)
-m = 10  # number of tasks
-n = 200  # number of candidate workers
+m = 80  # number of tasks
+n = 1200  # number of candidate workers
 avg_budget = 1.0
-min_cost = 0.01
+min_cost = 0.1
 max_cost = 0.5
 epochs = range(5)
 
 if __name__ == '__main__':
     for epoch in epochs:
 
-        g = read_graph_from_csv(graph_file, 0)
+        g = read_graph_from_csv(graph_file, 0, directed=True)
+        size = g.vcount()
+        del g
         workers = []
-        worker_ids = random.sample(list(g.nodes.keys()), n)
+        worker_ids = random.sample(range(size), n)
         for i in range(n):
             workers.append(Worker(idx=worker_ids[i]))
-        del g
         from graph.QIM import sampling, generate_estimation
         from utils.funcs import max_k
 
@@ -62,7 +69,6 @@ if __name__ == '__main__':
         costs = {}
         values = {}
         Q = [0] * m
-        g = read_graph_from_csv(graph_file, 0)
         for i in range(m):
             X = [random.uniform(min_cost, max_cost) for _ in range(n)]
             costs[i] = {}
@@ -72,10 +78,9 @@ if __name__ == '__main__':
             # values of all workers
             values[i] = {}
 
-            for v in g.nodes:
+            for v in range(size):
                 values[i][v] = random.uniform(0.0, 1.0)
                 Q[i] += values[i][v]
-        del g
 
         from ccta.Task import Task
         from tqdm import tqdm
@@ -90,22 +95,14 @@ if __name__ == '__main__':
                 budget = budgets[i]
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(budget, costs[i])
-                RR = sampling(graph=G, C=worker_ids, k=k, delta=1 / m, epsilon=0.1, values=values[i],
-                              method='modified')
+                RR = sampling(graph=G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.001, values=values[i],
+                              method='normal')
                 pbar.set_postfix({'task': i, 'time used': time.time() - start, 'RR size': len(RR)})
 
                 # initialize tasks
                 tasks.append(Task(idx=i, budget=budget, R=RR, Q=Q[i]))
                 tasks[i].initialize(costs[i])
                 tasks[i].set_graph(G, values[i])
-                pbar.update(100)
-
-        with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
-            pbar.set_description('round:{},generate estimation'.format(epoch))
-            for i in range(m):
-                RR = generate_estimation(graph=tasks[i].G, values=values[i], count=200000)
-                tasks[i].set_estimation_rr(RR)
-                pbar.set_postfix({'task': i})
                 pbar.update(100)
 
         for worker in workers:
@@ -115,6 +112,14 @@ if __name__ == '__main__':
             worker.set_preference(value_dict)
 
         result = {}
+
+        with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+            pbar.set_description('round:{},generate estimation'.format(epoch))
+            for i in range(m):
+                RR = generate_estimation(graph=tasks[i].G, values=values[i], count=20000)
+                tasks[i].set_estimation_rr(RR)
+                pbar.set_postfix({'task': i})
+                pbar.update(100)
 
         from stableMatching.Algo import generalized_da
 
@@ -142,17 +147,17 @@ if __name__ == '__main__':
         # generalized_da(tasks, workers)
         # result['matroid'] = estimate(tasks, workers)
 
-        with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
-            pbar.set_description('round:{},regenerate RR'.format(epoch))
-            for i in range(m):
-                start = time.time()
-                # generate hyper graph of reverse reachable set in graph G
-                k = max_k(tasks[i].budget, costs[i])
-                RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / m, epsilon=0.1, values=values[i],
-                              method='normal')
-                tasks[i].R = RR
-                pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
-                pbar.update(100)
+        # with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+        #     pbar.set_description('round:{},regenerate RR'.format(epoch))
+        #     for i in range(m):
+        #         start = time.time()
+        #         # generate hyper graph of reverse reachable set in graph G
+        #         k = max_k(tasks[i].budget, costs[i])
+        #         RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.001, values=values[i],
+        #                       method='normal')
+        #         tasks[i].R = RR
+        #         pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
+        #         pbar.update(100)
 
         from stableMatching.Algo import heuristic
 
@@ -168,10 +173,9 @@ if __name__ == '__main__':
         # methods = ['matroid']
         for method in methods:
             s = pd.Series([epoch, method, m, n, avg_budget, result[method]['fairness-pairwise'],
-                           result[method]['waste-pairwise'], result[method]['avg-density'],
-                           result[method]['max-density'], result[method]['min-density']],
+                           result[method]['avg-density'], result[method]['max-density'], result[method]['min-density']],
                           index=['round', 'method', 'task', 'worker', 'avg-budget', 'fairness-pairwise',
-                                 'waste-pairwise', 'avg-density', 'max-density', 'min-density'])
+                                 'avg-density', 'max-density', 'min-density'])
             df.loc[len(df)] = s
         df.reset_index(drop=True)
         df.to_csv(result_file, index=False)
