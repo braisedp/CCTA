@@ -302,16 +302,17 @@ class Task(School):
     def select(self, workers: list):
         # print(self)
         S = self.select_func.select(workers.copy())
-        dispose = set(self.S)-set(S)
-        # print('dispose:{}'.format([d.idx for d in dispose]))
-        for w in dispose:
-            self.dispose(w)
-            w.disposed()
-        # print('pre select:{}'.format([s.idx for s in self.S]))
-        for w in S:
-            w.selected_by(self)
-        self.S = S
-        # print('S:{}'.format([w.id for w in self.S]))
+        if gamma_workers(self.R, S) > gamma_workers(self.R, self.S):
+            dispose = set(self.S)-set(S)
+            # print('dispose:{}'.format([d.idx for d in dispose]))
+            for w in dispose:
+                self.dispose(w)
+                w.disposed()
+            # print('pre select:{}'.format([s.idx for s in self.S]))
+            for w in S:
+                w.selected_by(self)
+            self.S = S
+            # print('S:{}'.format([w.id for w in self.S]))
 
     def preview(self, workers: List):
         pass

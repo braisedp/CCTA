@@ -61,8 +61,8 @@ def read_graph_without_weights(filename, directed=False):
 #         G.add_edge(int(data.iloc[0]), int(data.iloc[1]), weight=float(data.iloc[2]))
 #     return G
 
-def read_graph_from_csv(filename, wcol=-1, directed=False):
-    df = pd.read_csv(filename)
+def read_graph_from_csv(filename, wcol=-1, sep=',', directed=False):
+    df = pd.read_csv(filename, sep=sep)
 
     # 提取边和权重
     edges = list(zip(df['from'], df['to']))
@@ -85,6 +85,8 @@ def read_graph_from_csv(filename, wcol=-1, directed=False):
 
 def gen_prb(n, mu, sigma, lower=0, upper=1):
     import scipy.stats as stats
+    lower = mu-2*sigma
+    upper = mu+2*sigma
     X = stats.truncnorm(
         (lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
     return X.rvs(n)
@@ -101,8 +103,8 @@ def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, undirected=True):
                 f.write("%d %d %s\n" % (e[1], e[0], X[i]))
 
 
-def wrt_prb_tasks(i_flnm, o_flnm, n, start=0, mu=0.1, sigma=0.05, directed=False):
-    G = read_graph_from_csv(i_flnm, directed=True)
+def wrt_prb_tasks(i_flnm, o_flnm, n, sep=',', start=0, mu=0.1, sigma=0.05, directed=False):
+    G = read_graph_from_csv(i_flnm, sep=sep, directed=True)
     m = len(G.es())
     df = pd.read_csv(o_flnm)
     cols = {}

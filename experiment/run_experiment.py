@@ -14,17 +14,18 @@ def estimate(Tasks, Workers, ise=False):
     if ise:
         for task_ in Tasks:
             task_.estimate()
-    result_dict = {'fairness-pairwise': fairness_pairwise(Tasks, Workers, ise),
-                   # 'overall_satisfactory': overall_satisfactory(tasks,workers,ise),
-                   'individual-rationality': individual_rationality_tasks(Tasks),
-                   # 'waste-pairwise': waste_pairwise(Tasks, Workers)
-                   }
+    result_dict = {
+        'fairness-pairwise': fairness_pairwise(Tasks, Workers, ise),
+        'overall-satisfactory': overall_satisfactory(tasks, workers, ise),
+        # 'individual-rationality': individual_rationality_tasks(Tasks),
+        # 'waste-pairwise': waste_pairwise(Tasks, Workers)
+    }
     Sum = 0
     Max = 0
     Min = 1000000
     for t_ in Tasks:
         if len(t_.students()) <= 0:
-            break
+            continue
         if ise:
             q = calculate_influence_workers(t_.students(), t_.G, t_.values) / t_.budget
         else:
@@ -34,17 +35,15 @@ def estimate(Tasks, Workers, ise=False):
             Max = q
         if q < Min:
             Min = q
-    result_dict['avg-density'] = Sum / len(Tasks)
-    result_dict['max-density'] = Max
-    result_dict['min-density'] = Min
+    result_dict['avg-quality'] = Sum / len(Tasks)
     return result_dict
 
 
-graph_name = 'dash'
+graph_name = 'copen'
 graph_file = '../graphs/{}.csv'.format(graph_name)
 result_file = './result/{}_result.csv'.format(graph_name)
-m = 160  # number of tasks
-n = 1200  # number of candidate workers
+m = 10  # number of tasks
+n = 40  # number of candidate workers
 avg_budget = 1.0
 min_cost = 0.1
 max_cost = 0.5
@@ -53,7 +52,7 @@ epochs = range(5)
 if __name__ == '__main__':
     for epoch in epochs:
 
-        g = read_graph_from_csv(graph_file, 0, directed=True)
+        g = read_graph_from_csv(graph_file, wcol=0, sep=',', directed=True)
         size = g.vcount()
         del g
         workers = []
@@ -86,7 +85,7 @@ if __name__ == '__main__':
         from tqdm import tqdm
 
         tasks = []
-        graph_ids = random.sample(range(200), m)
+        graph_ids = random.sample(range(100), m)
         with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
             pbar.set_description('round:{},generate tasks'.format(epoch))
             for i in range(m):
@@ -95,8 +94,9 @@ if __name__ == '__main__':
                 budget = budgets[i]
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(budget, costs[i])
-                RR = sampling(graph=G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.001, values=values[i],
+                RR = sampling(graph=G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.01, values=values[i],
                               method='normal')
+                # RR = generate_estimation(graph=G, values=values[i], count=2000)
                 pbar.set_postfix({'task': i, 'time used': time.time() - start, 'RR size': len(RR)})
 
                 # initialize tasks
@@ -153,8 +153,8 @@ if __name__ == '__main__':
         #         start = time.time()
         #         # generate hyper graph of reverse reachable set in graph G
         #         k = max_k(tasks[i].budget, costs[i])
-        #         RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.001, values=values[i],
-        #                       method='normal')
+        #         RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.001,
+        #         values=values[i], method='normal')
         #         tasks[i].R = RR
         #         pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
         #         pbar.update(100)
@@ -172,12 +172,12 @@ if __name__ == '__main__':
         methods = ['max-cover', 'budget', 'heuristic']
         # methods = ['matroid']
         for method in methods:
-            s = pd.Series([epoch, method, m, n, avg_budget, result[method]['fairness-pairwise'],
-                           result[method]['avg-density'], result[method]['max-density'], result[method]['min-density']],
-                          index=['round', 'method', 'task', 'worker', 'avg-budget', 'fairness-pairwise',
-                                 'avg-density', 'max-density', 'min-density'])
+            s = pd.Series([epoch, method, m, n, result[method]['fairness-pairwise'],
+                           result[method]['overall-satisfactory'], result[method]['avg-quality']],
+                          index=['round', 'method', 'task', 'worker', 'fairness-pairwise',
+                                 'overall-satisfactory', 'avg-quality'])
             df.loc[len(df)] = s
         df.reset_index(drop=True)
         df.to_csv(result_file, index=False)
 
-        del tasks, workers, df
+        del tasks, workers, df, result, costs, values, Q, budgets
