@@ -1,5 +1,6 @@
 import random
 import math
+import time
 
 from graph.graph import generate_rr
 from utils.funcs import Gamma, top_k, logcnk
@@ -16,6 +17,14 @@ def f_u(C, Si, f, R_1, k):
     for e in S:
         val += V[e]
     return val
+
+
+def fu(C, R_1, k):
+    min_val = math.inf
+    for i in range(k + 1):
+        S, f = node_selection_normal(C, R_1, i)
+        min_val = min(f_u(C, S, f, R_1, k), min_val)
+    return min_val
 
 
 def sampling(graph, C, k, delta, epsilon, values, method='normal'):
@@ -52,16 +61,20 @@ def sampling(graph, C, k, delta, epsilon, values, method='normal'):
             generate_rr(graph, v1, R_1, index=count)
             generate_rr(graph, v2, R_2, index=count)
             count += 1
-        # print('time1:{}'.format(time.time() - start))
+        # print('time of generating one rr:{}'.format(2*(time.time() - start)/theta))
+        # time1 = time.time()
+        # print('time1:{}'.format(time1 - start))
         Si, f = node_selection_normal(C, R_1, k)
-        # print('time2:{}'.format(time.time() - start))
+        # time2 = time.time()
+        # print('time2:{}'.format(time2 - time1))
         # lower bound of node selection
         sigma_l = math.pow(math.sqrt(Gamma(R_2, Si) + 2 * math.log(1 / delta2) / 9)
                            - math.sqrt(math.log(1 / delta2) / 2), 2) - math.log(1 / delta2) / 18
         # upper bound of optimum
-        sigma_u = math.pow(math.sqrt(f_u(C, Si, f, R_1, k) + math.log(1 / delta1) / 2)
+        sigma_u = math.pow(math.sqrt(fu(C, R_1, k) + math.log(1 / delta1) / 2)
                            + math.sqrt(math.log(1 / delta1) / 2), 2)
-        # print('time3:{}'.format(time.time() - start))
+        # print('time3:{}'.format(time.time() - time2))
+        # print(sigma_l, sigma_u)
         if sigma_l / sigma_u >= 1 - 1 / math.e - epsilon:
             break
         theta *= 2

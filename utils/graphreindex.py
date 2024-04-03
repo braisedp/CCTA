@@ -20,3 +20,9 @@ def renumber_nodes_in_csv(input_csv_file, output_csv_file, node_mapping, sep=','
     df['from'] = df['from'].map(node_mapping)
     df['to'] = df['to'].map(node_mapping)
     df.to_csv(output_csv_file, index=False)
+
+
+def reindex_graph(input_csv_file, output_csv_file, sep=','):
+    nodes = get_nodes_from_csv(input_csv_file, sep=sep)
+    node_mapping = create_node_mapping(nodes)
+    renumber_nodes_in_csv(input_csv_file, output_csv_file, node_mapping, sep=sep)

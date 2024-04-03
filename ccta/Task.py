@@ -28,53 +28,6 @@ def individual_rationality_tasks(tasks):
         L.append([task.budget, sum(task.costs[e] for e in task.students())])
     return L
 
-
-def average_utility_tasks(tasks):
-    sum_utility = 0
-    for task in tasks:
-        sum_utility += calculate_influence_workers(task.students(), task.G, task.values)
-    return sum_utility / len(tasks)
-
-
-class MChoice:
-    def __init__(self, S, R, budget, D, costs):
-        self.R = R
-        self.S = S
-        self.A = []
-        self.W = {}
-        self.U = 0.0
-        self.constraint = MatroidConstraint(budget, D, costs)
-        self.r = self.constraint.r
-
-    def choose(self, worker):
-        weight = gamma_workers(self.R, self.A + [worker]) - self.U
-        if self.constraint.satisfy(self.S + [worker]):
-            self.S.append(worker)
-            self.A.append(worker)
-            self.W[worker] = weight
-            self.U += weight
-            return []
-        else:
-            w_ = None
-            min_ = math.inf
-            for w in self.S:
-                S_ = self.S.copy()
-                S_.remove(w)
-                S_.append(worker)
-                if self.W[w] < min_ and self.constraint.satisfy(S_):
-                    w_ = w
-                    min_ = self.W[w]
-            if w_ is not None:
-                if weight > self.r * self.W[w_]:
-                    self.S.append(worker)
-                    self.S.remove(w_)
-                    self.A.append(worker)
-                    self.W[worker] = weight
-                    self.U += weight
-                    return [w_]
-        return [worker]
-
-
 class BChoice:
     def __init__(self, S, HG, budget, costs: dict):
         self.HG = HG  # Hyper Graph
@@ -267,21 +220,12 @@ class Task(School):
         self.S = []
         self.R = R
         self.Q = Q
-        self.G = None
         self.es_RR = None
-        self.values = None
         self. v = 0.0
 
     def initialize(self, costs):
         self.costs = costs
         self.select_func = BSelect(self.R, self.budget, costs)
-
-    def set_graph(self, graph, values):
-        self.G = graph
-        self.values = values
-
-    def set_choice_matroid(self, D):
-        self.choice_func = MChoice(self.S, self.R, self.budget, D, self.costs)
 
     def set_choice_budget(self):
         self.choice_func = BChoice(self.S, self.R, self.budget, self.costs)
@@ -328,10 +272,7 @@ class Task(School):
         self.S = []
         self.v = 0
 
-    def estimate(self):
-        self.v = calculate_influence_workers(self.S, self.G, self.values)
-
-    def prefer(self, new, ise=False):
+    def prefer(self, new):
         S = self.S
         costs = {}
         used = 0.0
@@ -344,22 +285,14 @@ class Task(School):
         if cost <= self.budget - sum([costs[e] for e in S]):
             return True
         k = max_k(self.budget-cost, costs)
-        if not ise:
-            if gamma_workers(self.es_RR, new) > gamma_workers(self.es_RR, S):
-                return True
-        if ise:
-            if calculate_influence_workers(new, self.G, self.values) > self.v:
-                return True
+        if gamma_workers(self.es_RR, new) > gamma_workers(self.es_RR, S):
+            return True
         for i in range(k):
             for A in itertools.combinations(S, k-i):
                 A = list(A)
                 if sum([costs[e] for e in A]) + cost <= self.budget:
-                    if not ise:
-                        if gamma_workers(self.es_RR, A + new) > gamma_workers(self.es_RR, S):
-                            return True
-                    if ise:
-                        if calculate_influence_workers(A + new, self.G, self.values) > self.v:
-                            return True
+                    if gamma_workers(self.es_RR, A + new) > gamma_workers(self.es_RR, S):
+                        return True
         return False
 
     def have_vacancy_for(self, new):

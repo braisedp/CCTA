@@ -6,69 +6,14 @@ import pandas as pd
 import numpy as np
 
 
-def read_graph(filename, directed=False):
-    if not directed:
-        G = nx.Graph()
-    else:
-        G = nx.DiGraph()
-    with open(filename) as f:
-        for line in f:
-            words = line.split(',')
-            e0 = int(words[0])
-            e1 = int(words[1])
-            try:
-                G[e0][e1]["weight"] += 1
-            except KeyError:
-                G.add_edge(e0, e1, weight=1)
-    return G
-
-
-def read_graph_with_weights(filename, directed=False):
-    if not directed:
-        G = nx.Graph()
-    else:
-        G = nx.DiGraph()
-    with open(filename) as f:
-        for line in f:
-            words = line.split()
-            e0 = int(words[0])
-            e1 = int(words[1])
-            w = float(words[2])
-            G.add_edge(e0, e1, weight=w)
-    return G
-
-
-def read_graph_without_weights(filename, directed=False):
-    if not directed:
-        G = nx.Graph()
-    else:
-        G = nx.DiGraph()
-    with open(filename) as f:
-        for line in f:
-            e0, e1 = map(int, line.split())
-            G.add_edge(e0, e1)
-    return G
-
-
-# def read_graph_from_csv(filename, task, directed=False):
-#     if not directed:
-#         G = nx.Graph()
-#     else:
-#         G = nx.DiGraph()
-#     df = pd.read_csv(filename)
-#     for i in range(len(df)):
-#         data = df.iloc[i, [1, 2, task + 3]]
-#         G.add_edge(int(data.iloc[0]), int(data.iloc[1]), weight=float(data.iloc[2]))
-#     return G
-
-def read_graph_from_csv(filename, wcol=-1, sep=',', directed=False):
+def read_graph(filename, wcol=-1, sep=',', directed=True):
     df = pd.read_csv(filename, sep=sep)
 
     # 提取边和权重
     edges = list(zip(df['from'], df['to']))
 
     # 创建有向图
-    graph = ig.Graph(directed)
+    graph = ig.Graph(directed=directed)
 
     nodes = set(sum(edges, ()))
 
@@ -83,7 +28,22 @@ def read_graph_from_csv(filename, wcol=-1, sep=',', directed=False):
     return graph
 
 
-def gen_prb(n, mu, sigma, lower=0, upper=1):
+def read_graphs(filename, cols, sep=',',directed=True):
+    df = pd.read_csv(filename, sep=sep)
+    edges = list(zip(df['from'], df['to']))
+    graphs=[]
+    nodes = set(sum(edges, ()))
+    for col in cols:
+        graph = ig.Graph(directed=directed)
+        graph.add_vertices(len(nodes))  # 添加所有节点
+        graph.add_edges(edges)  # 添加边
+        weights = df['{}'.format(col)].tolist()
+        graph.es['weight'] = weights
+        graphs.append(graph)
+    return graphs
+
+
+def gen_prb(n, mu, sigma):
     import scipy.stats as stats
     lower = mu-2*sigma
     upper = mu+2*sigma
@@ -92,19 +52,8 @@ def gen_prb(n, mu, sigma, lower=0, upper=1):
     return X.rvs(n)
 
 
-def wrt_prb(i_flnm, o_flnm, mu=0.09, sigma=0.06, undirected=True):
-    G = read_graph(i_flnm)
-    m = len(G.edges())
-    X = gen_prb(m, mu, sigma)
-    with open(o_flnm, "w+") as f:
-        for i, e in enumerate(G.edges()):
-            f.write("%d %d %s\n" % (e[0], e[1], X[i]))
-            if undirected:
-                f.write("%d %d %s\n" % (e[1], e[0], X[i]))
-
-
-def wrt_prb_tasks(i_flnm, o_flnm, n, sep=',', start=0, mu=0.1, sigma=0.05, directed=False):
-    G = read_graph_from_csv(i_flnm, sep=sep, directed=True)
+def wrt_prb_tasks(i_flnm, o_flnm, n, sep=',', start=0, mu=0.1, sigma=0.05, directed=True):
+    G = read_graph(i_flnm, sep=sep, directed=directed)
     m = len(G.es())
     df = pd.read_csv(o_flnm)
     cols = {}
@@ -128,8 +77,9 @@ def generate_rr_ic(graph, node, HG: HyperGraph, index):
     while activity_set:
         new_activity_set = list()
         for seed in activity_set:
-            for v in graph.predecessors(seed):
-                weight = graph.es[graph.get_eid(v, seed)]['weight']
+            for e in graph.vs[seed].in_edges():
+                v = e.source
+                weight = e['weight']
                 if v not in activity_nodes:
                     if random.random() < weight:
                         HG.add_fr(v, index)
@@ -137,3 +87,4 @@ def generate_rr_ic(graph, node, HG: HyperGraph, index):
                         new_activity_set.append(v)
         activity_set = new_activity_set
     HG.add_edge(index, activity_nodes)
+    return len(activity_nodes)

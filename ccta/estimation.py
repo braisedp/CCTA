@@ -7,13 +7,13 @@ from ccta.Worker import Worker
 from utils.funcs import max_k
 
 
-def fairness_pairwise(tasks: list[Task], workers: list[Worker], ise=False):
+def fairness_pairwise(tasks: list[Task], workers: list[Worker]):
     outward_unsatisfied_pairs = 0
     with tqdm(total=len(tasks)*len(workers), desc='estimate fairness-pairwise', leave=True, ncols=100, unit='B',
               unit_scale=True) as pbr:
         for task in tasks:
             for worker in workers:
-                if worker.prefer(task) and task.prefer([worker], ise):
+                if worker.prefer(task) and task.prefer([worker]):
                     outward_unsatisfied_pairs += 1
                 pbr.update(1)
     qualified_pairs = 0
@@ -24,7 +24,7 @@ def fairness_pairwise(tasks: list[Task], workers: list[Worker], ise=False):
     return 1 - outward_unsatisfied_pairs / qualified_pairs
 
 
-def overall_satisfactory(tasks: list[Task], workers: list[Worker], ise=False):
+def overall_satisfactory(tasks: list[Task], workers: list[Worker]):
     overall_unsatisfied_pairs = 0
     for task in tasks:
         P = []
@@ -39,7 +39,7 @@ def overall_satisfactory(tasks: list[Task], workers: list[Worker], ise=False):
         k = max_k(task.budget, costs)
         for i in range(k):
             for new in itertools.combinations(P, i + 1):
-                if task.have_vacancy_for(list(new)) or task.prefer(list(new), ise):
+                if task.have_vacancy_for(list(new)) or task.prefer(list(new)):
                     for worker in new:
                         if not visited[worker]:
                             overall_unsatisfied_pairs += 1
@@ -64,7 +64,3 @@ def waste_pairwise(tasks, workers):
             if task in worker.preference_list() and task.costs[worker] <= task.budget:
                 qualified_pairs += 1
     return wasted_pairs / qualified_pairs
-
-
-
-

@@ -7,43 +7,39 @@ from ccta.Worker import Worker
 from ccta.estimation import fairness_pairwise, waste_pairwise, overall_satisfactory
 import random
 import time
-from graph.graph import read_graph_from_csv
+from graph.graph import read_graph, read_graphs
 
 
-def estimate(Tasks, Workers, ise=False):
-    if ise:
-        for task_ in Tasks:
-            task_.estimate()
+def estimate(Tasks, Workers):
     result_dict = {
-        'fairness-pairwise': fairness_pairwise(Tasks, Workers, ise),
-        'overall-satisfactory': overall_satisfactory(tasks, workers, ise),
+        'fairness-pairwise': fairness_pairwise(Tasks, Workers),
+        # 'overall-satisfactory': overall_satisfactory(Tasks, Workers),
         # 'individual-rationality': individual_rationality_tasks(Tasks),
         # 'waste-pairwise': waste_pairwise(Tasks, Workers)
     }
     Sum = 0
-    Max = 0
-    Min = 1000000
     for t_ in Tasks:
         if len(t_.students()) <= 0:
             continue
-        if ise:
-            q = calculate_influence_workers(t_.students(), t_.G, t_.values) / t_.budget
-        else:
-            q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
+        q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
         Sum += q
-        if q > Max:
-            Max = q
-        if q < Min:
-            Min = q
     result_dict['avg-quality'] = Sum / len(Tasks)
+
+    Sum2 = 0
+    for w_ in Workers:
+        q = 0
+        if w_.task is not None:
+            q = 1-w_.preference_list().index(w_.task)/len(w_.preference_list())
+        Sum2 += q
+    result_dict['avg-utility'] = Sum2/len(Workers)
     return result_dict
 
 
-graph_name = 'copen'
+graph_name = 'dash'
 graph_file = '../graphs/{}.csv'.format(graph_name)
 result_file = './result/{}_result.csv'.format(graph_name)
-m = 10  # number of tasks
-n = 40  # number of candidate workers
+m = 160  # number of tasks
+n = 600  # number of candidate workers
 avg_budget = 1.0
 min_cost = 0.1
 max_cost = 0.5
@@ -52,7 +48,7 @@ epochs = range(5)
 if __name__ == '__main__':
     for epoch in epochs:
 
-        g = read_graph_from_csv(graph_file, wcol=0, sep=',', directed=True)
+        g = read_graph(graph_file, wcol=0, sep=',', directed=True)
         size = g.vcount()
         del g
         workers = []
@@ -85,12 +81,13 @@ if __name__ == '__main__':
         from tqdm import tqdm
 
         tasks = []
-        graph_ids = random.sample(range(100), m)
+        graph_ids = random.sample(range(500), m)
+        graphs = read_graphs(graph_file, cols=graph_ids, sep=',', directed=True)
         with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
             pbar.set_description('round:{},generate tasks'.format(epoch))
             for i in range(m):
                 start = time.time()
-                G = read_graph_from_csv(graph_file, graph_ids[i], directed=True)
+                G = graphs[i]
                 budget = budgets[i]
                 # generate hyper graph of reverse reachable set in graph G
                 k = max_k(budget, costs[i])
@@ -102,7 +99,6 @@ if __name__ == '__main__':
                 # initialize tasks
                 tasks.append(Task(idx=i, budget=budget, R=RR, Q=Q[i]))
                 tasks[i].initialize(costs[i])
-                tasks[i].set_graph(G, values[i])
                 pbar.update(100)
 
         for worker in workers:
@@ -116,20 +112,14 @@ if __name__ == '__main__':
         with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
             pbar.set_description('round:{},generate estimation'.format(epoch))
             for i in range(m):
-                RR = generate_estimation(graph=tasks[i].G, values=values[i], count=20000)
+                RR = generate_estimation(graph=graphs[i], values=values[i], count=100000)
                 tasks[i].set_estimation_rr(RR)
                 pbar.set_postfix({'task': i})
                 pbar.update(100)
 
-        from stableMatching.Algo import generalized_da
+        del graphs
 
-        for worker in workers:
-            worker.refresh()
-        for task in tasks:
-            task.refresh()
-            task.set_choice_max_cover()
-        generalized_da(tasks, workers)
-        result['max-cover'] = estimate(tasks, workers)
+        from stableMatching.Algo import generalized_da
 
         for worker in workers:
             worker.refresh()
@@ -139,13 +129,13 @@ if __name__ == '__main__':
         generalized_da(tasks, workers)
         result['budget'] = estimate(tasks, workers)
 
-        # for worker in workers:
-        #     worker.refresh()
-        # for task in tasks:
-        #     task.refresh()
-        #     task.set_choice_matroid(math.ceil(10*avg_budget))
-        # generalized_da(tasks, workers)
-        # result['matroid'] = estimate(tasks, workers)
+        for worker in workers:
+            worker.refresh()
+        for task in tasks:
+            task.refresh()
+            task.set_choice_max_cover()
+        generalized_da(tasks, workers)
+        result['max-cover'] = estimate(tasks, workers)
 
         # with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
         #     pbar.set_description('round:{},regenerate RR'.format(epoch))
@@ -172,10 +162,9 @@ if __name__ == '__main__':
         methods = ['max-cover', 'budget', 'heuristic']
         # methods = ['matroid']
         for method in methods:
-            s = pd.Series([epoch, method, m, n, result[method]['fairness-pairwise'],
-                           result[method]['overall-satisfactory'], result[method]['avg-quality']],
-                          index=['round', 'method', 'task', 'worker', 'fairness-pairwise',
-                                 'overall-satisfactory', 'avg-quality'])
+            s = pd.Series([epoch, method, m, n, result[method]['fairness-pairwise'], result[method]['avg-quality'],
+                           result[method]['avg-utility']],
+                          index=['round', 'method', 'task', 'worker', 'fairness-pairwise', 'avg-quality', 'avg-utility'])
             df.loc[len(df)] = s
         df.reset_index(drop=True)
         df.to_csv(result_file, index=False)
