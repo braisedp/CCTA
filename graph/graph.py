@@ -31,7 +31,7 @@ def read_graph(filename, wcol=-1, sep=',', directed=True):
 def read_graphs(filename, cols, sep=',',directed=True):
     df = pd.read_csv(filename, sep=sep)
     edges = list(zip(df['from'], df['to']))
-    graphs=[]
+    graphs = []
     nodes = set(sum(edges, ()))
     for col in cols:
         graph = ig.Graph(directed=directed)

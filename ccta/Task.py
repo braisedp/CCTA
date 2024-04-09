@@ -28,6 +28,7 @@ def individual_rationality_tasks(tasks):
         L.append([task.budget, sum(task.costs[e] for e in task.students())])
     return L
 
+
 class BChoice:
     def __init__(self, S, HG, budget, costs: dict):
         self.HG = HG  # Hyper Graph

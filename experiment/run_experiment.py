@@ -13,7 +13,7 @@ from graph.graph import read_graph, read_graphs
 def estimate(Tasks, Workers):
     result_dict = {
         'fairness-pairwise': fairness_pairwise(Tasks, Workers),
-        # 'overall-satisfactory': overall_satisfactory(Tasks, Workers),
+        'overall-satisfactory': overall_satisfactory(Tasks, Workers),
         # 'individual-rationality': individual_rationality_tasks(Tasks),
         # 'waste-pairwise': waste_pairwise(Tasks, Workers)
     }
@@ -29,23 +29,13 @@ def estimate(Tasks, Workers):
     for w_ in Workers:
         q = 0
         if w_.task is not None:
-            q = 1-w_.preference_list().index(w_.task)/len(w_.preference_list())
+            q = 1 - w_.preference_list().index(w_.task) / len(w_.preference_list())
         Sum2 += q
-    result_dict['avg-utility'] = Sum2/len(Workers)
+    result_dict['avg-utility'] = Sum2 / len(Workers)
     return result_dict
 
 
-graph_name = 'dash'
-graph_file = '../graphs/{}.csv'.format(graph_name)
-result_file = './result/{}_result.csv'.format(graph_name)
-m = 160  # number of tasks
-n = 600  # number of candidate workers
-avg_budget = 1.0
-min_cost = 0.1
-max_cost = 0.5
-epochs = range(5)
-
-if __name__ == '__main__':
+def run_experiment(graph_file, result_file, m, n, avg_budget, min_cost, max_cost, epochs):
     for epoch in epochs:
 
         g = read_graph(graph_file, wcol=0, sep=',', directed=True)
@@ -81,7 +71,7 @@ if __name__ == '__main__':
         from tqdm import tqdm
 
         tasks = []
-        graph_ids = random.sample(range(500), m)
+        graph_ids = random.sample(range(100), m)
         graphs = read_graphs(graph_file, cols=graph_ids, sep=',', directed=True)
         with tqdm(total=m * 100, desc='generate tasks', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
             pbar.set_description('round:{},generate tasks'.format(epoch))
@@ -162,11 +152,29 @@ if __name__ == '__main__':
         methods = ['max-cover', 'budget', 'heuristic']
         # methods = ['matroid']
         for method in methods:
-            s = pd.Series([epoch, method, m, n, result[method]['fairness-pairwise'], result[method]['avg-quality'],
+            s = pd.Series([epoch, method, m, n,
+                           result[method]['fairness-pairwise'],
+                           result[method]['overall-satisfactory'],
+                           result[method]['avg-quality'],
                            result[method]['avg-utility']],
-                          index=['round', 'method', 'task', 'worker', 'fairness-pairwise', 'avg-quality', 'avg-utility'])
+                          index=['round', 'method', 'task', 'worker',
+                                 'fairness-pairwise',
+                                 'overall-satisfactory',
+                                 'avg-quality',
+                                 'avg-utility'])
             df.loc[len(df)] = s
         df.reset_index(drop=True)
         df.to_csv(result_file, index=False)
 
         del tasks, workers, df, result, costs, values, Q, budgets
+
+
+def run(graph_name, m_list, n):
+    graph_file = './graphs/{}.csv'.format(graph_name)
+    result_file = './experiment/result/{}_result.csv'.format(graph_name)
+    avg_budget = 1.0
+    min_cost = 0.1
+    max_cost = 0.5
+    epochs = range(5)
+    for m in m_list:
+        run_experiment(graph_file, result_file, m, n, avg_budget, min_cost, max_cost, epochs)
