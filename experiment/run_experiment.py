@@ -12,18 +12,18 @@ from graph.graph import read_graph, read_graphs
 
 def estimate(Tasks, Workers):
     result_dict = {
-        'fairness-pairwise': fairness_pairwise(Tasks, Workers),
-        'overall-satisfactory': overall_satisfactory(Tasks, Workers),
+        # 'fairness-pairwise': fairness_pairwise(Tasks, Workers),
+        # 'overall-satisfactory': overall_satisfactory(Tasks, Workers),
         # 'individual-rationality': individual_rationality_tasks(Tasks),
         # 'waste-pairwise': waste_pairwise(Tasks, Workers)
     }
-    Sum = 0
-    for t_ in Tasks:
-        if len(t_.students()) <= 0:
-            continue
-        q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
-        Sum += q
-    result_dict['avg-quality'] = Sum / len(Tasks)
+    # Sum = 0
+    # for t_ in Tasks:
+    #     if len(t_.students()) <= 0:
+    #         continue
+    #     q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
+    #     Sum += q
+    # result_dict['avg-quality'] = Sum / len(Tasks)
 
     Sum2 = 0
     for w_ in Workers:
@@ -161,8 +161,12 @@ def run_experiment(graph_file, result_file, m, n, avg_budget, min_cost, max_cost
                                  'fairness-pairwise',
                                  'overall-satisfactory',
                                  'avg-quality',
-                                 'avg-utility'])
+                                 'avg-utility'
+                                 ])
             df.loc[len(df)] = s
+            # mask = (df['round'] == epoch) & (df['method'] == method) & (df['task'] == m) & (
+            #             df['worker'] == n)
+            # df.loc[mask, 'avg-utility'] = result[method]['avg-utility']
         df.reset_index(drop=True)
         df.to_csv(result_file, index=False)
 
