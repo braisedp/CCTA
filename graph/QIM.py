@@ -92,29 +92,6 @@ def generate_estimation(graph, values, count):
     return R
 
 
-# def node_selection_sq(C, R, k):
-#     S = []
-#     A = []
-#     W = {}
-#     U = 0.0
-#     for s in C:
-#         weight = Gamma(R, A + [s]) - U
-#         if len(S) < k:
-#             S.append(s)
-#             A.append(s)
-#             W[s] = weight
-#             U += weight
-#         else:
-#             s_ = min(S, key=lambda x: W[x])
-#             if weight > 2 * W[s_]:
-#                 S.append(s)
-#                 A.append(s)
-#                 S.remove(s_)
-#                 W[s] = weight
-#                 U += weight
-#     return S, Gamma(R, S)
-
-
 def node_selection_normal(C, R, k):
     S = []
     U = 0.0

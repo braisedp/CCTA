@@ -194,6 +194,7 @@ class BSelect:
     def __init__(self, R, budget, costs):
         self.R = R
         self.constraint = BudgetConstraint(budget, costs)
+        self.costs = costs
 
     def select(self, workers):
         S = []
@@ -201,10 +202,10 @@ class BSelect:
             V = {}
             for worker in workers:
                 if self.constraint.satisfy(S+[worker]):
-                    V[worker] = gamma_workers(self.R, S+[worker])
+                    V[worker] = gamma_workers(self.R, S+[worker])-gamma_workers(self.R, S)
                 else:
                     V[worker] = 0
-            v_e = max(workers, key=lambda x: V[x])
+            v_e = max(workers, key=lambda x: V[x]/self.costs[x])
             if self.constraint.satisfy(S + [v_e]):
                 S.append(v_e)
             workers.remove(v_e)

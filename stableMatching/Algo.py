@@ -21,14 +21,17 @@ def find(students: List) -> Student:
 
 
 def generalized_da(schools: List, students: List):
+    turn = 0
     for student in students:
         student.preview(schools)
     for school in schools:
         school.preview(students)
     while not all_matched(students):
+        turn += 1
         student = find(students)
         school = student.propose()
         school.choice(student)
+    return turn
 
 
 def heuristic(schools: List, students: List, k: int, visualize: bool = True):
