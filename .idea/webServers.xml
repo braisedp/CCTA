@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="facb3c82-a0ef-44b7-befa-691a495584e1" name="luke">
+        <fileTransfer accessType="SFTP" host="www.lukenas.top" port="37522" sshConfigId="b073c309-e831-4326-b063-fe88539fc1eb" sshConfig="braisedp@www.lukenas.top:37522 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

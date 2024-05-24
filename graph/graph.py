@@ -65,6 +65,25 @@ def wrt_prb_tasks(i_flnm, o_flnm, n, sep=',', start=0, mu=0.1, sigma=0.05, direc
     df.to_csv(o_flnm, index=False)
 
 
+def gen_prb_uniform(n):
+    import scipy.stats as stats
+    X = stats.uniform(0.1, 0.5)
+    return X.rvs(n)
+
+
+def wrt_prb_tasks_uniform(i_flnm, o_flnm, n, sep=',', start=0, directed=True):
+    G = read_graph(i_flnm, sep=sep, directed=directed)
+    m = len(G.es())
+    df = pd.read_csv(o_flnm)
+    cols = {}
+    for i in range(n):
+        prb = np.array(gen_prb_uniform(m))
+        cols['{}'.format(i + start)] = prb
+    new_df = pd.DataFrame(cols)
+    df = pd.concat([df, new_df], axis=1)
+    df.to_csv(o_flnm, index=False)
+
+
 def generate_rr(graph, v, HG: HyperGraph, index):
     return generate_rr_ic(graph, v, HG, index)
 

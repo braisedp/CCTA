@@ -14,7 +14,7 @@ def estimate(Tasks, Workers):
     result_dict = {
         'fairness-pairwise': fairness_pairwise(Tasks, Workers),
         # 'overall-satisfactory': overall_satisfactory(Tasks, Workers),
-        # 'individual-rationality': individual_rationality_tasks(Tasks),
+        'individual-rationality': individual_rationality_tasks(Tasks),
         # 'waste-pairwise': waste_pairwise(Tasks, Workers)
     }
     Sum = 0
@@ -115,35 +115,23 @@ def matching(tasks: list[Task], workers: list[Worker]) -> dict:
     result = {}
     from stableMatching.Algo import generalized_da
 
-    # for worker in workers:
-    #     worker.refresh()
-    # for task in tasks:
-    #     task.refresh()
-    #     task.set_choice_budget()
-    # turn = generalized_da(tasks, workers)
-    # result['budget'] = estimate(tasks, workers)
-    # result['budget']['turn'] = turn
-    #
-    # for worker in workers:
-    #     worker.refresh()
-    # for task in tasks:
-    #     task.refresh()
-    #     task.set_choice_max_cover()
-    # generalized_da(tasks, workers)
-    # result['max-cover'] = estimate(tasks, workers)
-    # result['max-cover']['turn'] = turn
+    for worker in workers:
+        worker.refresh()
+    for task in tasks:
+        task.refresh()
+        task.set_choice_budget()
+    turn = generalized_da(tasks, workers)
+    result['budget'] = estimate(tasks, workers)
+    result['budget']['turn'] = turn
 
-    # with tqdm(total=m * 100, leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
-    #     pbar.set_description('round:{},regenerate RR'.format(epoch))
-    #     for i in range(m):
-    #         start = time.time()
-    #         # generate hyper graph of reverse reachable set in graph G
-    #         k = max_k(tasks[i].budget, costs[i])
-    #         RR = sampling(graph=tasks[i].G, C=worker_ids, k=k, delta=1 / math.pow(m, 2), epsilon=0.001,
-    #         values=values[i], method='normal')
-    #         tasks[i].R = RR
-    #         pbar.set_postfix({'task': i, 'time used': time.time() - start, 'len RR': len(RR)})
-    #         pbar.update(100)
+    for worker in workers:
+        worker.refresh()
+    for task in tasks:
+        task.refresh()
+        task.set_choice_max_cover()
+    generalized_da(tasks, workers)
+    result['max-cover'] = estimate(tasks, workers)
+    result['max-cover']['turn'] = turn
 
     from stableMatching.Algo import heuristic
 
@@ -157,9 +145,20 @@ def matching(tasks: list[Task], workers: list[Worker]) -> dict:
     return result
 
 
+def save_results_individual_rational(result, result_file, m, n):
+    df = pd.read_csv(result_file).reset_index(drop=True)
+    methods = ['max-cover', 'budget', 'heuristic']
+    for method in methods:
+        for i in range(m):
+            s = pd.Series([method, result[method]['individual-rationality'][i][1]], index=['method', 'cost'])
+            df.loc[len(df)] = s
+    df.reset_index(drop=True)
+    df.to_csv(result_file, index=False)
+
+
 def save_results(result, result_file, epoch, m, n):
     df = pd.read_csv(result_file).reset_index(drop=True)
-    methods = ['heuristic']
+    methods = ['budget','max-cover','heuristic']
     # methods = ['matroid']
     for method in methods:
         s = pd.Series([epoch, method, m, n,
@@ -204,6 +203,12 @@ def run_estimate_heuristic(graph_file, graph_name, result_file, m, n, K, avg_bud
         save_result_heuristic(result, result_file, K, graph_name, m, n, epoch)
 
 
+def run_estimate_individual(graph_file, result_file, m, n, avg_budget, min_cost, max_cost):
+    tasks, workers = init_environment(graph_file, m, n, avg_budget, min_cost, max_cost, 0)
+    result = matching(tasks, workers)
+    save_results_individual_rational(result, result_file, m, n)
+
+
 def save_result_heuristic(result, result_file, K, graph_name, m, n, epoch):
     df = pd.read_csv(result_file).reset_index(drop=True)
     for k in range(K):
@@ -223,7 +228,7 @@ def run_heuristic(graph_name, m_list, n, K):
     avg_budget = 1.0
     min_cost = 0.1
     max_cost = 0.5
-    epochs = range(10)
+    epochs = range(1)
     for m in m_list:
         run_estimate_heuristic(graph_file, graph_name, result_file, m, n, K, avg_budget, min_cost, max_cost, epochs)
 
@@ -237,3 +242,13 @@ def run(graph_name, m_list, n):
     epochs = range(10)
     for m in m_list:
         run_experiment(graph_file, result_file, m, n, avg_budget, min_cost, max_cost, epochs)
+
+
+def run_individual_rational(graph_name, m_list, n):
+    graph_file = './graphs/{}.csv'.format(graph_name)
+    result_file = './experiment/result/{}_result_individual.csv'.format(graph_name)
+    avg_budget = 1.0
+    min_cost = 0.1
+    max_cost = 0.5
+    for m in m_list:
+        run_estimate_individual(graph_file, result_file, m, n, avg_budget, min_cost, max_cost)
