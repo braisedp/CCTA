@@ -23,3 +23,13 @@ class HyperGraph:
         if v in self.FR:
             return self.FR[v]
         return []
+
+    def merge(self, HG):
+        self.edges += HG.edges
+        self.RR.update(HG.RR)
+        for k, v in HG.FR.items():
+            if k in self.FR:
+                self.FR[k] += v
+            else:
+                self.FR[k] = v
+        self.length += HG.length

@@ -10,6 +10,7 @@ import time
 from graph.graph import read_graph, read_graphs
 
 
+
 def estimate(Tasks, Workers):
     result_dict = {
         'fairness-pairwise': fairness_pairwise(Tasks, Workers),
@@ -233,7 +234,7 @@ def run_heuristic(graph_name, m_list, n, K):
         run_estimate_heuristic(graph_file, graph_name, result_file, m, n, K, avg_budget, min_cost, max_cost, epochs)
 
 
-def run(graph_name, m_list, n):
+def run_exp(graph_name, m_list, n):
     graph_file = './graphs/{}.csv'.format(graph_name)
     result_file = './experiment/result/{}_result.csv'.format(graph_name)
     avg_budget = 1.0
@@ -252,3 +253,10 @@ def run_individual_rational(graph_name, m_list, n):
     max_cost = 0.5
     for m in m_list:
         run_estimate_individual(graph_file, result_file, m, n, avg_budget, min_cost, max_cost)
+
+
+if __name__ == '__main__':
+    import sys;
+    print('Python %s on %s' % (sys.version, sys.platform))
+    sys.path.extend(['/home/braisedp/ccta/'])
+    run_exp('dashu', [20 + 20 * i for i in range(10)], 800)

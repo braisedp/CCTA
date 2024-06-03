@@ -72,3 +72,4 @@ def waste_pairwise(tasks, workers):
             if task in worker.preference_list() and task.costs[worker] <= task.budget:
                 qualified_pairs += 1
     return wasted_pairs / qualified_pairs
+

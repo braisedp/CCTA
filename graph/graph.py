@@ -106,4 +106,4 @@ def generate_rr_ic(graph, node, HG: HyperGraph, index):
                         new_activity_set.append(v)
         activity_set = new_activity_set
     HG.add_edge(index, activity_nodes)
-    return len(activity_nodes)
+    return HG
