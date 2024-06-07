@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="CCTA" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.9.0 (sftp://braisedp@www.lukenas.top:37522/home/braisedp/anaconda3/envs/ccta/bin/python)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="CCTA" project-jdk-type="Python SDK" />
 </project>

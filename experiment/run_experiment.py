@@ -13,26 +13,26 @@ from graph.graph import read_graph, read_graphs
 
 def estimate(Tasks, Workers):
     result_dict = {
-        'fairness-pairwise': fairness_pairwise(Tasks, Workers),
-        # 'overall-satisfactory': overall_satisfactory(Tasks, Workers),
-        'individual-rationality': individual_rationality_tasks(Tasks),
+        # 'fairness-pairwise': fairness_pairwise(Tasks, Workers),
+         # 'overall-satisfactory': overall_satisfactory(Tasks, Workers),
+        #'individual-rationality': individual_rationality_tasks(Tasks),
         # 'waste-pairwise': waste_pairwise(Tasks, Workers)
     }
-    Sum = 0
-    for t_ in Tasks:
-        if len(t_.students()) <= 0:
-            continue
-        q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
-        Sum += q
-    result_dict['avg-quality'] = Sum / len(Tasks)
-
-    Sum2 = 0
-    for w_ in Workers:
-        q = 0
-        if w_.task is not None:
-            q = 1 - w_.preference_list().index(w_.task) / len(w_.preference_list())
-        Sum2 += q
-    result_dict['avg-utility'] = Sum2 / len(Workers)
+    # Sum = 0
+    # for t_ in Tasks:
+    #     if len(t_.students()) <= 0:
+    #         continue
+    #     q = gamma_workers(t_.es_RR, t_.students()) * t_.Q / len(t_.es_RR)
+    #     Sum += q
+    # result_dict['avg-quality'] = Sum / len(Tasks)
+    #
+    # Sum2 = 0
+    # for w_ in Workers:
+    #     q = 0
+    #     if w_.task is not None:
+    #         q = 1 - w_.preference_list().index(w_.task) / len(w_.preference_list())
+    #     Sum2 += q
+    # result_dict['avg-utility'] = Sum2 / len(Workers)
     return result_dict
 
 
@@ -40,7 +40,7 @@ def run_experiment(graph_file, result_file, m, n, avg_budget, min_cost, max_cost
     for epoch in epochs:
         tasks, workers = init_environment(graph_file, m, n, avg_budget, min_cost, max_cost, epoch)
         result = matching(tasks, workers)
-        save_results(result, result_file, epoch, m, n)
+        # save_results(result, result_file, epoch, m, n)
 
 
 def init_environment(graph_file, m, n, avg_budget, min_cost, max_cost, epoch) -> tuple[list[Task], list[Worker]]:
@@ -101,13 +101,13 @@ def init_environment(graph_file, m, n, avg_budget, min_cost, max_cost, epoch) ->
             value_dict[t] = random.random()
         worker.set_preference(value_dict)
 
-    with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
-        pbar.set_description('round:{},generate estimation'.format(epoch))
-        for i in range(m):
-            RR = generate_estimation(graph=graphs[i], values=values[i], count=100000)
-            tasks[i].set_estimation_rr(RR)
-            pbar.set_postfix({'task': i})
-            pbar.update(100)
+    # with tqdm(total=m * 100, desc='generate estimation', leave=True, ncols=150, unit='B', unit_scale=True) as pbar:
+    #     pbar.set_description('round:{},generate estimation'.format(epoch))
+    #     for i in range(m):
+    #         RR = generate_estimation(graph=graphs[i], values=values[i], count=100000)
+    #         tasks[i].set_estimation_rr(RR)
+    #         pbar.set_postfix({'task': i})
+    #         pbar.update(100)
 
     return tasks, workers
 
@@ -130,7 +130,7 @@ def matching(tasks: list[Task], workers: list[Worker]) -> dict:
     for task in tasks:
         task.refresh()
         task.set_choice_max_cover()
-    generalized_da(tasks, workers)
+    turn = generalized_da(tasks, workers)
     result['max-cover'] = estimate(tasks, workers)
     result['max-cover']['turn'] = turn
 
@@ -164,14 +164,14 @@ def save_results(result, result_file, epoch, m, n):
     for method in methods:
         s = pd.Series([epoch, method, m, n,
                        result[method]['fairness-pairwise'],
-                       # result[method]['overall-satisfactory'],
+                        result[method]['overall-satisfactory'],
                        result[method]['avg-quality'],
                        result[method]['avg-utility'],
                        result[method]['turn']
                        ],
                       index=['round', 'method', 'task', 'worker',
                              'fairness-pairwise',
-                             # 'overall-satisfactory',
+                             'overall-satisfactory',
                              'avg-quality',
                              'avg-utility',
                              'turn'
